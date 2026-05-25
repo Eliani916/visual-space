@@ -1,6 +1,0 @@
-{
-  "registry": "npm",
-  "packages": [
-    {"package": "midtrans-client"}
-  ]
-}

@@ -14,7 +14,15 @@ export async function getGallery(bookingId: string) {
       include: {
         package: true,
         payment: true,
-        galleries: true,
+        gallery: {
+          include: {
+            images: {
+              include: {
+                printSelection: true
+              }
+            }
+          }
+        },
       }
     });
 
@@ -27,12 +35,18 @@ export async function getGallery(bookingId: string) {
 
     const isFullyPaid = booking.payment?.status === "LUNAS";
 
+    const images = booking.gallery?.images || [];
+
     // Format galleries based on payment status
-    const formattedGalleries = booking.galleries.map(g => ({
-      id: g.id,
-      url: isFullyPaid || session.user.role !== "PELANGGAN" ? g.originalUrl : g.watermarkedUrl,
-      isSelected: g.isSelected,
-    }));
+    const formattedGalleries = images.map(img => {
+      const originalUrl = `/uploads/${bookingId}/original/${img.fileName}`;
+      const watermarkedUrl = `/uploads/${bookingId}/watermarked/${img.fileName}`;
+      return {
+        id: img.id,
+        url: isFullyPaid || session.user.role !== "PELANGGAN" ? originalUrl : watermarkedUrl,
+        isSelected: img.printSelection?.isPrinted || false,
+      };
+    });
 
     return { 
       success: true, 
@@ -49,36 +63,55 @@ export async function getGallery(bookingId: string) {
   }
 }
 
-export async function togglePrintSelection(galleryId: string, isSelected: boolean) {
+export async function togglePrintSelection(galleryImageId: string, isSelected: boolean) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) throw new Error("Unauthorized");
 
-    const gallery = await prisma.gallery.findUnique({
-      where: { id: galleryId },
-      include: { booking: { include: { package: true } } }
+    const galleryImage = await prisma.galleryImage.findUnique({
+      where: { id: galleryImageId },
+      include: {
+        gallery: {
+          include: {
+            booking: {
+              include: {
+                package: true
+              }
+            }
+          }
+        },
+        printSelection: true
+      }
     });
 
-    if (!gallery) throw new Error("Foto tidak ditemukan");
+    if (!galleryImage) throw new Error("Foto tidak ditemukan");
 
-    if (session.user.role === "PELANGGAN" && gallery.booking.userId !== session.user.id) {
+    if (session.user.role === "PELANGGAN" && galleryImage.gallery.booking.userId !== session.user.id) {
       throw new Error("Forbidden");
     }
 
     // Check limit if trying to select
     if (isSelected) {
-      const selectedCount = await prisma.gallery.count({
-        where: { bookingId: gallery.bookingId, isSelected: true }
+      const selectedCount = await prisma.printSelection.count({
+        where: {
+          isPrinted: true,
+          galleryImage: {
+            gallery: {
+              bookingId: galleryImage.gallery.bookingId
+            }
+          }
+        }
       });
 
-      if (selectedCount >= gallery.booking.package.printCount) {
-        throw new Error(`Limit cetak paket Anda adalah ${gallery.booking.package.printCount} foto`);
+      if (selectedCount >= galleryImage.gallery.booking.package.printCount) {
+        throw new Error(`Limit cetak paket Anda adalah ${galleryImage.gallery.booking.package.printCount} foto`);
       }
     }
 
-    const updated = await prisma.gallery.update({
-      where: { id: galleryId },
-      data: { isSelected }
+    const updated = await prisma.printSelection.upsert({
+      where: { galleryImageId: galleryImage.id },
+      update: { isPrinted: isSelected },
+      create: { galleryImageId: galleryImage.id, isPrinted: isSelected }
     });
 
     return { success: true, data: updated };

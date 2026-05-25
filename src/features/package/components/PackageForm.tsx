@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { createPackage, updatePackage } from "../actions/package.actions";
 import { useState } from "react";
-// import { useToast } from "@/hooks/use-toast"; // we will add this later
+import { toast } from "sonner";
 
 type Props = {
   initialData?: any;
@@ -20,7 +20,7 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   
   const form = useForm<PackageInput>({
-    resolver: zodResolver(packageSchema),
+    resolver: zodResolver(packageSchema) as any,
     defaultValues: initialData || {
       name: "",
       price: 0,
@@ -40,10 +40,10 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
     }
 
     if (res.success) {
-      alert("Berhasil menyimpan paket");
+      toast.success("Berhasil menyimpan paket");
       if (onSuccess) onSuccess();
     } else {
-      alert(res.message);
+      toast.error(res.message);
     }
     setLoading(false);
   };

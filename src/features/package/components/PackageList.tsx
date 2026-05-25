@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getPackages, deletePackage } from "../actions/package.actions";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -32,7 +33,7 @@ export default function PackageList() {
     if (res.success) {
       setPackages(res.data || []);
     } else {
-      alert(res.message);
+      toast.error(res.message);
     }
     setLoading(false);
   };
@@ -45,9 +46,10 @@ export default function PackageList() {
     if (!confirm("Apakah Anda yakin ingin menghapus paket ini?")) return;
     const res = await deletePackage(id);
     if (res.success) {
+      toast.success("Paket berhasil dihapus");
       fetchPackages();
     } else {
-      alert(res.message);
+      toast.error(res.message);
     }
   };
 
@@ -66,9 +68,7 @@ export default function PackageList() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Manajemen Paket Foto</h2>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleAdd}>Tambah Paket</Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button onClick={handleAdd}>Tambah Paket</Button>} />
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingPkg ? "Edit Paket" : "Tambah Paket"}</DialogTitle>

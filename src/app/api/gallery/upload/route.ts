@@ -35,6 +35,20 @@ export async function POST(req: Request) {
     await fs.mkdir(originalDir, { recursive: true });
     await fs.mkdir(watermarkDir, { recursive: true });
 
+    let gallery = await prisma.gallery.findUnique({
+      where: { bookingId }
+    });
+
+    if (!gallery) {
+      gallery = await prisma.gallery.create({
+        data: {
+          bookingId,
+          folderPath: `/uploads/${bookingId}`,
+          isWatermarked: true
+        }
+      });
+    }
+
     const savedFiles = [];
 
     for (const file of files) {
@@ -63,19 +77,16 @@ export async function POST(req: Request) {
         .toFile(watermarkPath);
 
       // Save to database
-      const originalUrl = `/uploads/${bookingId}/original/${fileName}`;
-      const watermarkedUrl = `/uploads/${bookingId}/watermarked/${fileName}`;
-
-      const gallery = await prisma.gallery.create({
+      const galleryImage = await prisma.galleryImage.create({
         data: {
-          bookingId,
-          originalUrl,
-          watermarkedUrl,
-          isSelected: false,
+          galleryId: gallery.id,
+          filePath: `/uploads/${bookingId}/watermarked/${fileName}`,
+          fileName: fileName,
+          uploadedBy: session.user.id
         }
       });
 
-      savedFiles.push(gallery);
+      savedFiles.push(galleryImage);
     }
 
     return NextResponse.json({ success: true, data: savedFiles });
