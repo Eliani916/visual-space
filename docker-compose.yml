@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: photobooth_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: photobooth_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+  # Next.js App
+  # app:
+  #   build: .
+  #   container_name: photobooth_app
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=mysql://root:root@mysql:3306/photobooth_db
+  #   depends_on:
+  #     - mysql
+  #   volumes:
+  #     - ./public/uploads:/app/public/uploads
+
+volumes:
+  mysql_data:
