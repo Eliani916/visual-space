@@ -36,7 +36,7 @@ export async function createPackage(data: PackageInput) {
 
     revalidatePath("/admin/packages");
     revalidatePath("/");
-    return { success: true, data: newPackage };
+    return { success: true, data: JSON.parse(JSON.stringify(newPackage)) };
   } catch (error: any) {
     console.error("Create Package Error:", error.message);
     return { success: false, message: error.message || "Gagal membuat paket" };
@@ -82,7 +82,7 @@ export async function getPackages(includeInactive = false) {
       },
       orderBy: { createdAt: 'desc' }
     });
-    return { success: true, data: packages };
+    return { success: true, data: JSON.parse(JSON.stringify(packages)) };
   } catch (error) {
     console.error("Get Packages Error", error);
     return { success: false, message: "Gagal mengambil daftar paket" };
@@ -111,7 +111,7 @@ export async function updatePackage(id: string, data: PackageInput) {
 
     revalidatePath("/admin/packages");
     revalidatePath("/");
-    return { success: true, data: updatedPackage };
+    return { success: true, data: JSON.parse(JSON.stringify(updatedPackage)) };
   } catch (error: any) {
     console.error("Update Package Error", error.message);
     return { success: false, message: error.message || "Gagal mengupdate paket" };

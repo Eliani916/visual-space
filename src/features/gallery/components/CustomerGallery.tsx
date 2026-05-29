@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getGallery, togglePrintSelection } from "../actions/gallery.actions";
 import { toast } from "sonner";
-import { Star } from "lucide-react";
+import { Star, Check } from "lucide-react";
 import { submitBookingReview } from "@/features/booking/actions/review.actions";
 import { Button } from "@/components/ui/button";
 
@@ -66,20 +66,20 @@ export default function CustomerGallery({ bookingId }: { bookingId: string }) {
 
   return (
     <div className="space-y-6 mt-6">
-      <div className="bg-blue-50 p-4 rounded border border-blue-200 flex justify-between items-center">
+      <div className="bg-indigo-50 dark:bg-indigo-950/20 p-6 rounded-3xl border border-indigo-200/50 dark:border-indigo-900/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h3 className="font-bold text-lg text-blue-900">Galeri Foto Anda</h3>
+          <h3 className="font-extrabold text-lg text-indigo-900 dark:text-indigo-400">Galeri Foto Anda</h3>
           {!isFullyPaid && (
-            <p className="text-sm text-red-600 font-semibold">
+            <p className="text-xs text-rose-600 dark:text-rose-455 font-semibold mt-1">
               Anda belum melunasi pembayaran. Foto ditampilkan dengan watermark dan tidak dapat diunduh tanpa watermark.
             </p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-sm text-gray-600">Jatah Cetak Fisik:</p>
-          <p className="text-xl font-bold">
-            <span className={selectedCount >= printLimit ? "text-green-600" : "text-blue-600"}>{selectedCount}</span> 
-            / {printLimit}
+        <div className="text-left sm:text-right shrink-0">
+          <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider font-semibold">Jatah Cetak Fisik</p>
+          <p className="text-2xl font-black mt-0.5">
+            <span className={selectedCount >= printLimit ? "text-emerald-500" : "text-indigo-500 dark:text-indigo-400"}>{selectedCount}</span> 
+            <span className="text-sm font-semibold text-slate-455 dark:text-zinc-550"> / {printLimit}</span>
           </p>
         </div>
       </div>
@@ -169,21 +169,19 @@ export default function CustomerGallery({ bookingId }: { bookingId: string }) {
           <p className="col-span-4 text-center py-8 text-gray-500">Belum ada foto yang diunggah oleh fotografer.</p>
         ) : (
           galleries.map((img: any) => (
-            <div key={img.id} className={`relative border rounded overflow-hidden group ${img.isSelected ? 'ring-4 ring-green-500' : ''}`}>
-              <img src={img.url} alt="Gallery" className="w-full h-48 object-cover" />
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div key={img.id} className={`relative border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden group transition duration-300 ${img.isSelected ? 'ring-4 ring-emerald-500 border-emerald-500' : ''}`}>
+              <img src={img.url} alt="Gallery" className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <button 
                   onClick={() => handleToggle(img.id, img.isSelected)}
-                  className={`px-4 py-2 rounded font-bold text-sm ${img.isSelected ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs transition duration-200 cursor-pointer shadow-md ${img.isSelected ? 'bg-red-650 hover:bg-red-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
                 >
-                  {img.isSelected ? "Batal Cetak" : "Pilih untuk Cetak"}
+                  {img.isSelected ? "Batal Cetak" : "Pilih Cetak"}
                 </button>
               </div>
               {img.isSelected && (
-                <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
+                <div className="absolute top-3 right-3 bg-emerald-500 text-white p-1 rounded-full shadow-md">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
               )}
             </div>

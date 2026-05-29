@@ -25,7 +25,7 @@ export async function getAdminBookings() {
       take: 100, // For demo, we just take 100
     });
 
-    return { success: true, data: bookings };
+    return { success: true, data: JSON.parse(JSON.stringify(bookings)) };
   } catch (error) {
     console.error("Get Admin Bookings Error:", error);
     return { success: false, data: [] };

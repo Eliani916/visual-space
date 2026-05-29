@@ -214,9 +214,9 @@ export default function BookingForm({ settings }: { settings: any }) {
     // Fetch packages
     getPackages(false).then((res) => {
       if (res.success) {
-        const pkgs = res.data || [];
+        const pkgs: any[] = res.data || [];
         setPackages(pkgs);
-        if (queryPackageId && pkgs.some(p => p.id === queryPackageId)) {
+        if (queryPackageId && pkgs.some((p: any) => p.id === queryPackageId)) {
           form.setValue("packageId", queryPackageId);
         } else if (pkgs.length > 0) {
           form.setValue("packageId", pkgs[0].id);

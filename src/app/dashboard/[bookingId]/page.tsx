@@ -3,8 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import CustomerGallery from "@/features/gallery/components/CustomerGallery";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import CustomerBookingDetailClient from "./CustomerBookingDetailClient";
+
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 export default async function CustomerBookingDetailPage({ params }: { params: { bookingId: string } }) {
   const session = await getServerSession(authOptions);
@@ -19,46 +21,29 @@ export default async function CustomerBookingDetailPage({ params }: { params: { 
   });
 
   if (!booking || booking.userId !== session.user.id) {
-    return <div className="text-center p-8">Booking tidak ditemukan.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+        <p className="text-slate-500 font-medium">Booking tidak ditemukan.</p>
+      </div>
+    );
   }
 
-  return (
-    <div className="container mx-auto p-8 min-h-screen bg-gray-50">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Detail Booking</h2>
-        <Link href="/dashboard">
-          <Button variant="outline">Kembali ke Dashboard</Button>
-        </Link>
-      </div>
-      
-      <div className="bg-white p-6 rounded shadow border">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Paket Foto</p>
-            <p className="font-semibold text-lg">{booking.package.name}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Jadwal</p>
-            <p className="font-semibold text-lg">{new Date(booking.bookingDate).toLocaleDateString('id-ID')} | {booking.bookingTime}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Status Booking</p>
-            <p className="font-semibold text-lg">{booking.status}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Pembayaran</p>
-            <p className="font-semibold text-lg">{booking.payment?.status || '-'}</p>
-          </div>
-        </div>
-      </div>
+  // Serialize Decimal & Date fields to avoid RSC serialization errors
+  const serializedBooking = JSON.parse(JSON.stringify(booking));
 
-      {booking.status === "COMPLETED" && (
-        <CustomerGallery bookingId={booking.id} />
-      )}
+  return (
+    <div className="space-y-4">
+      <CustomerBookingDetailClient booking={serializedBooking} />
       
-      {booking.status !== "COMPLETED" && (
-        <div className="mt-6 text-center text-gray-500">
-          Galeri foto akan tersedia setelah sesi foto selesai (Status: COMPLETED).
+      {booking.status === "COMPLETED" ? (
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 pb-12">
+          <CustomerGallery bookingId={booking.id} />
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 pb-12">
+          <div className="bg-slate-100 dark:bg-zinc-900/40 p-8 rounded-3xl border border-dashed border-slate-200 dark:border-zinc-800 text-center text-xs text-slate-500 dark:text-zinc-500">
+            Galeri foto digital (Soft File) Anda akan otomatis muncul di sini setelah sesi foto Anda selesai dilaksanakan (Status Booking: COMPLETED).
+          </div>
         </div>
       )}
     </div>

@@ -74,7 +74,7 @@ export async function getActiveQueue() {
       orderBy: { checkInTime: "asc" },
     });
 
-    return { success: true, data: queues };
+    return { success: true, data: JSON.parse(JSON.stringify(queues)) };
   } catch (error) {
     console.error("Get Active Queue Error:", error);
     return { success: false, data: [] };
@@ -138,7 +138,7 @@ export async function getQueueSessions() {
       ],
     });
 
-    return { success: true, data: sessions };
+    return { success: true, data: JSON.parse(JSON.stringify(sessions)) };
   } catch (error: any) {
     console.error("Get Queue Sessions Error:", error.message);
     return { success: false, data: [] };
