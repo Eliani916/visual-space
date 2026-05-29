@@ -49,7 +49,7 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
       </div>
 
       {/* Navigation Header */}
-      <nav className="relative z-10 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0">
+      <nav className="relative z-50 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0">
         <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
@@ -146,14 +146,6 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
                           <Icons.CreditCard className="w-4 h-4 text-blue-400" />
                           Riwayat Pembayaran
                         </Link>
-                        <Link
-                          href="/dashboard"
-                          className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <Icons.User className="w-4 h-4 text-blue-400" />
-                          Profil Saya
-                        </Link>
                       </>
                     )}
 
@@ -176,12 +168,6 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
                 Login
               </Link>
             )}
-            <Link
-              href="/booking"
-              className="text-sm font-bold bg-white text-slate-900 px-5 py-2.5 rounded-full hover:bg-slate-200 hover:scale-105 transition duration-300 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-            >
-              Booking Sesi
-            </Link>
           </div>
         </div>
       </nav>
