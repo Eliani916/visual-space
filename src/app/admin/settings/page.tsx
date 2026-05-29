@@ -1,6 +1,9 @@
 import SettingsForm from "@/features/booking/components/SettingsForm";
 import { getSettings } from "@/features/booking/actions/settings.actions";
 
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Pengaturan Sistem | Photobooth Admin",
 };
