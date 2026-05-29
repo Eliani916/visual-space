@@ -5,6 +5,9 @@ export const packageSchema = z.object({
   price: z.number().min(0, "Harga tidak boleh negatif"),
   printCount: z.number().int().min(0, "Jumlah cetak tidak boleh negatif"),
   description: z.string().min(10, "Deskripsi minimal 10 karakter").max(1000, "Deskripsi terlalu panjang"),
+  features: z.string().optional().nullable(),
+  isPopular: z.boolean().default(false),
+  ctaText: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
 });
 

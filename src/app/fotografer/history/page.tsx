@@ -20,13 +20,7 @@ export default async function FotograferHistoryPage() {
   });
 
   return (
-    <div className="container mx-auto p-8 bg-white min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Riwayat Sesi Selesai</h2>
-        <Link href="/fotografer/dashboard">
-          <Button variant="outline">Kembali ke Antrean</Button>
-        </Link>
-      </div>
+    <div className="container mx-auto p-8">
 
       <div className="grid gap-4">
         {completedBookings.map(b => (

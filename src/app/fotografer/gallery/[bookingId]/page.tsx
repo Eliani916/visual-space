@@ -21,15 +21,14 @@ export default async function FotograferGalleryPage({ params }: { params: { book
   }
 
   return (
-    <div className="container mx-auto p-8 bg-white min-h-screen">
-      <h2 className="text-2xl font-bold mb-4">Manajemen Galeri</h2>
-      <div className="mb-6 bg-blue-50 p-4 rounded border">
+    <div className="container mx-auto p-8">
+      <div className="mb-6 bg-blue-50 dark:bg-indigo-950/40 p-4 rounded border border-blue-200 dark:border-indigo-900/40">
         <p><strong>Pelanggan:</strong> {booking.user.name}</p>
         <p><strong>Paket:</strong> {booking.package.name}</p>
         <p><strong>Status:</strong> {booking.status}</p>
       </div>
 
-      <UploadGallery bookingId={params.bookingId} />
+      <UploadGallery bookingId={params.bookingId} initialGDriveLink={booking.gdriveLink || ""} />
     </div>
   );
 }

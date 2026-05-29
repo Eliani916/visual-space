@@ -54,7 +54,10 @@ export async function getGallery(bookingId: string) {
         bookingId: booking.id,
         isFullyPaid,
         printLimit: booking.package.printCount,
-        galleries: formattedGalleries
+        galleries: formattedGalleries,
+        gdriveLink: booking.gdriveLink,
+        reviewRating: booking.reviewRating,
+        reviewComment: booking.reviewComment,
       } 
     };
   } catch (error: any) {

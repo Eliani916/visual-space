@@ -84,7 +84,7 @@ export async function getActiveQueue() {
 export async function updateQueueStatus(queueId: string, status: "WAITING" | "IN_PROGRESS" | "FINISHED") {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "FOTOGRAFER") {
+    if (!session || (session.user.role !== "FOTOGRAFER" && session.user.role !== "ADMIN")) {
       throw new Error("Unauthorized");
     }
 
@@ -108,9 +108,39 @@ export async function updateQueueStatus(queueId: string, status: "WAITING" | "IN
     });
 
     revalidatePath("/fotografer/dashboard");
+    revalidatePath("/admin/queues");
     return { success: true };
   } catch (error: any) {
     console.error("Update Queue Status Error:", error.message);
     return { success: false, message: error.message };
+  }
+}
+
+export async function getQueueSessions() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "FOTOGRAFER")) {
+      throw new Error("Unauthorized");
+    }
+
+    const sessions = await prisma.booking.findMany({
+      where: {
+        status: { in: ["CONFIRMED", "ON_PROGRESS", "COMPLETED"] }
+      },
+      include: {
+        user: true,
+        package: true,
+        queue: true,
+      },
+      orderBy: [
+        { bookingDate: 'desc' },
+        { bookingTime: 'asc' }
+      ],
+    });
+
+    return { success: true, data: sessions };
+  } catch (error: any) {
+    console.error("Get Queue Sessions Error:", error.message);
+    return { success: false, data: [] };
   }
 }

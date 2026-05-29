@@ -17,7 +17,6 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="container mx-auto p-8">
-      <h2 className="text-2xl font-bold mb-6">Pengaturan Sistem (Jam & Pembayaran)</h2>
       <SettingsForm initialData={initialData} />
     </div>
   );

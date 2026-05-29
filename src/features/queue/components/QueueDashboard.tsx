@@ -54,12 +54,8 @@ export default function QueueDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Dashboard Antrean Realtime</h2>
-        <div className="space-x-2">
-          <Button variant="outline" onClick={() => window.location.href = '/fotografer/history'}>Riwayat Sesi</Button>
-          <Button variant="default" onClick={fetchQueues}>Refresh</Button>
-        </div>
+      <div className="flex items-center justify-end">
+        <Button variant="default" onClick={fetchQueues}>Refresh Data</Button>
       </div>
       
       <div className="bg-white p-6 rounded-lg shadow border">

@@ -27,11 +27,15 @@ export async function createPackage(data: PackageInput) {
         price: validatedData.price,
         printCount: validatedData.printCount,
         description: validatedData.description,
+        features: validatedData.features,
+        isPopular: validatedData.isPopular,
+        ctaText: validatedData.ctaText,
         isActive: validatedData.isActive,
       },
     });
 
     revalidatePath("/admin/packages");
+    revalidatePath("/");
     return { success: true, data: newPackage };
   } catch (error: any) {
     console.error("Create Package Error:", error.message);
@@ -45,6 +49,37 @@ export async function getPackages(includeInactive = false) {
     const where = includeInactive ? { deletedAt: null } : { isActive: true, deletedAt: null };
     const packages = await prisma.package.findMany({
       where,
+      include: {
+        images: true,
+        bookings: {
+          where: {
+            status: "COMPLETED",
+            reviewRating: { not: null },
+            reviewComment: { not: null },
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            reviewRating: true,
+            reviewComment: true,
+            createdAt: true,
+            user: {
+              select: {
+                name: true,
+                images: {
+                  take: 1,
+                  select: {
+                    url: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' }
     });
     return { success: true, data: packages };
@@ -67,11 +102,15 @@ export async function updatePackage(id: string, data: PackageInput) {
         price: validatedData.price,
         printCount: validatedData.printCount,
         description: validatedData.description,
+        features: validatedData.features,
+        isPopular: validatedData.isPopular,
+        ctaText: validatedData.ctaText,
         isActive: validatedData.isActive,
       },
     });
 
     revalidatePath("/admin/packages");
+    revalidatePath("/");
     return { success: true, data: updatedPackage };
   } catch (error: any) {
     console.error("Update Package Error", error.message);
