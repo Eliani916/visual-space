@@ -58,6 +58,10 @@ export async function getGallery(bookingId: string) {
         gdriveLink: booking.gdriveLink,
         reviewRating: booking.reviewRating,
         reviewComment: booking.reviewComment,
+        printSelection: booking.printSelection,
+        shippingAddress: booking.shippingAddress,
+        printStatus: booking.printStatus,
+        printPhotos: booking.printPhotos,
       } 
     };
   } catch (error: any) {
@@ -123,3 +127,95 @@ export async function togglePrintSelection(galleryImageId: string, isSelected: b
     return { success: false, message: error.message };
   }
 }
+
+export async function savePrintSelection(bookingId: string, printSelection: string, shippingAddress: string, printPhotos?: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) throw new Error("Unauthorized");
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId }
+    });
+
+    if (!booking) throw new Error("Booking tidak ditemukan");
+
+    if (session.user.role === "PELANGGAN" && booking.userId !== session.user.id) {
+      throw new Error("Forbidden");
+    }
+
+    if (booking.printStatus && !["PENDING", "BELUM_DIAJUKAN"].includes(booking.printStatus)) {
+      throw new Error("Foto sudah mulai diproses cetak atau dikirim, pilihan cetak tidak dapat diubah.");
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { 
+        printSelection,
+        shippingAddress,
+        printStatus: "PENDING",
+        ...(printPhotos !== undefined ? { printPhotos } : {})
+      }
+    });
+
+    return { success: true, message: "Pilihan cetak & alamat berhasil disimpan", data: updated };
+  } catch (error: any) {
+    console.error("Save Print Selection Error:", error.message);
+    return { success: false, message: error.message || "Gagal menyimpan pilihan cetak" };
+  }
+}
+
+export async function updatePrintStatus(bookingId: string, status: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      throw new Error("Unauthorized: Hanya Admin yang dapat memperbarui status cetak");
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { printStatus: status }
+    });
+
+    return { success: true, message: `Status cetak berhasil diubah menjadi ${status}`, data: updated };
+  } catch (error: any) {
+    console.error("Update Print Status Error:", error.message);
+    return { success: false, message: error.message || "Gagal memperbarui status cetak" };
+  }
+}
+
+export async function getAdminPrintBookings() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      throw new Error("Unauthorized");
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        status: "COMPLETED",
+        OR: [
+          { printSelection: { not: null } },
+          { printPhotos: { not: null } }
+        ],
+        deletedAt: null
+      },
+      include: {
+        user: true,
+        package: true
+      },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    const activeRequests = bookings.filter(b => 
+      (b.printSelection && b.printSelection.trim() !== "") || 
+      (b.printPhotos && b.printPhotos.trim() !== "")
+    );
+
+    return { success: true, data: activeRequests };
+  } catch (error: any) {
+    console.error("Get Admin Print Bookings Error:", error.message);
+    return { success: false, message: error.message || "Gagal memuat daftar cetak" };
+  }
+}
+
+

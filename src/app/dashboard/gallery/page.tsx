@@ -11,7 +11,8 @@ import {
   AlertCircle, 
   Sparkles,
   ChevronRight,
-  Download
+  Download,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -97,57 +98,73 @@ export default async function CustomerGalleryListPage() {
           <div className="grid gap-4.5">
             {bookings.map((b) => {
               const hasReviewed = b.reviewComment !== null;
+              const hasGDriveLink = b.gdriveLink !== null && b.gdriveLink !== "";
               
               return (
-                <Link key={b.id} href={`/dashboard/${b.id}`}>
-                  <div className="group bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200/85 dark:border-zinc-800/85 hover:border-indigo-500/50 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-300 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-500/5 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/10 dark:border-indigo-500/20 flex items-center justify-center shrink-0">
-                        <ImageIcon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-slate-800 dark:text-white group-hover:text-indigo-500 transition duration-200">{b.package.name}</h4>
-                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-455 dark:text-zinc-400 mt-1.5">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {new Date(b.bookingDate).toLocaleDateString("id-ID", {
-                              weekday: "short",
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {b.bookingTime}
-                          </span>
-                        </div>
+                <div key={b.id} className="group bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200/85 dark:border-zinc-800/85 hover:border-indigo-500/50 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-305 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  {/* Left Section: clickable title & details */}
+                  <Link href={`/dashboard/${b.id}`} className="flex-1 flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/5 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/10 dark:border-indigo-500/20 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 dark:text-white group-hover:text-indigo-500 transition duration-200">{b.package.name}</h4>
+                      <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-455 dark:text-zinc-400 mt-1.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(b.bookingDate).toLocaleDateString("id-ID", {
+                            weekday: "short",
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          {b.bookingTime}
+                        </span>
                       </div>
                     </div>
+                  </Link>
 
-                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t border-slate-100 dark:border-zinc-800/40 md:border-0 pt-3 md:pt-0 gap-3">
-                      <div className="flex items-center gap-2">
-                        {/* Review/Unlock status badge */}
-                        {hasReviewed ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xxs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/20">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            Sudah Diulas (Akses Terbuka)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xxs font-bold uppercase tracking-wider bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/20">
-                            <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                            Ulas Sesi Untuk Unduh
-                          </span>
-                        )}
-                      </div>
+                  {/* Right Section: Status badge and action buttons */}
+                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t border-slate-100 dark:border-zinc-800/40 md:border-0 pt-3 md:pt-0 gap-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      {/* Review/Unlock status badge */}
+                      {hasReviewed ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xxs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/20">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          Sudah Diulas (Akses Terbuka)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xxs font-bold uppercase tracking-wider bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/20">
+                          <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          Ulas Sesi Untuk Unduh
+                        </span>
+                      )}
+                    </div>
 
-                      <span className="text-xs text-indigo-505 dark:text-indigo-400 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                        Lihat Galeri & Unduh
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {hasReviewed && hasGDriveLink ? (
+                        <>
+                          <a href={b.gdriveLink || "#"} target="_blank" rel="noopener noreferrer" className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xxs rounded-xl flex items-center gap-1 transition-all shadow-sm">
+                            Buka Google Drive
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <Link href={`/dashboard/${b.id}`} className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-extrabold text-xxs rounded-xl flex items-center gap-0.5 transition-all">
+                            Kelola Cetak Foto
+                            <ChevronRight className="w-3 h-3" />
+                          </Link>
+                        </>
+                      ) : (
+                        <Link href={`/dashboard/${b.id}`} className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline transition flex items-center gap-0.5">
+                          Lihat Galeri & Ulas
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      )}
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

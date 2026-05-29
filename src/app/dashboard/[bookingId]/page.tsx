@@ -8,15 +8,17 @@ import CustomerBookingDetailClient from "./CustomerBookingDetailClient";
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-export default async function CustomerBookingDetailPage({ params }: { params: { bookingId: string } }) {
+export default async function CustomerBookingDetailPage({ params }: { params: Promise<{ bookingId: string }> }) {
   const session = await getServerSession(authOptions);
   
   if (!session || session.user.role !== "PELANGGAN") {
     redirect("/login");
   }
 
+  const { bookingId } = await params;
+
   const booking = await prisma.booking.findUnique({
-    where: { id: params.bookingId },
+    where: { id: bookingId },
     include: { package: true, payment: true },
   });
 

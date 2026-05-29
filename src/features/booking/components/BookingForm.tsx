@@ -9,11 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { createBooking, getAvailableTimes } from "../actions/booking.actions";
 import { getPackages } from "@/features/package/actions/package.actions";
-import { validatePromoCode } from "@/features/booking/actions/promo.actions";
 import { toast } from "sonner";
-import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Calendar, Clock, CreditCard, Tag, Sparkles, AlertCircle, Star } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, CreditCard, Sparkles, AlertCircle, Star } from "lucide-react";
 
 declare global {
   interface Window {
@@ -153,7 +151,6 @@ export default function BookingForm({ settings }: { settings: any }) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [isTransferRequired, setIsTransferRequired] = useState(false);
-  const [promoMessage, setPromoMessage] = useState("");
 
   const form = useForm<BookingInput>({
     resolver: zodResolver(bookingSchema),
@@ -167,11 +164,10 @@ export default function BookingForm({ settings }: { settings: any }) {
     },
   });
 
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const discountPercent = 0;
 
   const selectedDate = form.watch("bookingDate");
   const selectedMethod = form.watch("paymentMethod");
-  const promoCode = form.watch("promoCode");
   const selectedPackageId = form.watch("packageId");
 
   useEffect(() => {
@@ -181,34 +177,6 @@ export default function BookingForm({ settings }: { settings: any }) {
       form.setValue("paymentType", "DP");
     }
   }, [selectedMethod, form]);
-
-  useEffect(() => {
-    if (!promoCode) {
-      setPromoMessage("");
-      setDiscountPercent(0);
-      return;
-    }
-
-    if (!selectedPackageId) {
-      setPromoMessage("ℹ Silakan pilih paket terlebih dahulu");
-      setDiscountPercent(0);
-      return;
-    }
-
-    const delayDebounceFn = setTimeout(async () => {
-      setPromoMessage("Memvalidasi...");
-      const res = await validatePromoCode(promoCode, selectedPackageId);
-      if (res.success) {
-        setPromoMessage(`✓ ${res.message}`);
-        setDiscountPercent(res.discountPercent || 0);
-      } else {
-        setPromoMessage(`✗ ${res.message}`);
-        setDiscountPercent(0);
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [promoCode, selectedPackageId]);
 
   useEffect(() => {
     // Fetch packages
@@ -254,34 +222,11 @@ export default function BookingForm({ settings }: { settings: any }) {
   const onSubmit = async (data: BookingInput) => {
     setLoading(true);
     const res = await createBooking(data);
-    if (res.success) {
+    if (res.success && res.data) {
       toast.success("Booking berhasil dibuat");
-      
-      if (data.paymentMethod === "TRANSFER" && res.data?.token) {
-        // Trigger midtrans snap
-        window.snap.pay(res.data.token, {
-          onSuccess: function(result: any){
-            toast.success("Pembayaran berhasil!");
-            router.push("/dashboard");
-          },
-          onPending: function(result: any){
-            toast.info("Menunggu pembayaran Anda!");
-            router.push("/dashboard");
-          },
-          onError: function(result: any){
-            toast.error("Pembayaran gagal!");
-            router.push("/dashboard");
-          },
-          onClose: function(){
-            toast.warning("Anda menutup popup pembayaran.");
-            router.push("/dashboard");
-          }
-        });
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(`/dashboard/${res.data.bookingId}`);
     } else {
-      toast.error(res.message);
+      toast.error(res.message || "Gagal membuat booking");
     }
     setLoading(false);
   };
@@ -297,19 +242,9 @@ export default function BookingForm({ settings }: { settings: any }) {
   const paymentAmount = isDp ? finalTotalPrice * 0.5 : finalTotalPrice;
 
   const localToday = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-  const isProd = !process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY?.startsWith("SB-");
-  const snapScriptUrl = isProd 
-    ? "https://app.midtrans.com/snap/snap.js" 
-    : "https://app.sandbox.midtrans.com/snap/snap.js";
 
   return (
     <>
-      <Script 
-        src={snapScriptUrl} 
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY} 
-        strategy="lazyOnload" 
-      />
-      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="w-full relative z-10">
           {/* Hidden packageId field */}
@@ -517,29 +452,6 @@ export default function BookingForm({ settings }: { settings: any }) {
                       )}
                     />
                   )}
-
-                  <FormField
-                    control={form.control}
-                    name="promoCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-semibold text-slate-400 block mb-1">Kode Promo (Opsional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Misal: DISKON10" 
-                            {...field} 
-                            className="bg-slate-950 border-slate-900 focus-visible:border-purple-500 focus-visible:ring-purple-500/20 text-slate-100 rounded-xl uppercase placeholder:text-slate-700" 
-                          />
-                        </FormControl>
-                        {promoMessage && (
-                          <p className={`text-xs font-semibold mt-1 ${promoMessage.startsWith("✓") ? "text-green-400" : "text-rose-400"}`}>
-                            {promoMessage}
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 <div className="h-px bg-slate-800/80 my-4" />
@@ -550,13 +462,6 @@ export default function BookingForm({ settings }: { settings: any }) {
                     <span className="text-slate-400">Harga Paket</span>
                     <span className="text-slate-355 font-medium">Rp {packagePrice.toLocaleString("id-ID")}</span>
                   </div>
-
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between items-center text-sm text-green-400">
-                      <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> Diskon ({discountPercent}%)</span>
-                      <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
-                    </div>
-                  )}
 
                   <div className="flex justify-between items-center text-sm border-t border-slate-800/60 pt-2.5 font-bold">
                     <span className="text-slate-200">Total Harga</span>

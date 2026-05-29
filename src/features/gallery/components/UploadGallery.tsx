@@ -9,45 +9,16 @@ import { sendGDriveLink } from "@/features/booking/actions/review.actions";
 export default function UploadGallery({ 
   bookingId, 
   initialGDriveLink = "", 
+  initialPrintSelection = "",
   onSuccess 
 }: { 
   bookingId: string; 
   initialGDriveLink?: string; 
+  initialPrintSelection?: string;
   onSuccess?: () => void; 
 }) {
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [gdriveLink, setGdriveLink] = useState(initialGDriveLink);
   const [sendingGDrive, setSendingGDrive] = useState(false);
-
-  const handleUpload = async () => {
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("bookingId", bookingId);
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i]);
-    }
-
-    try {
-      const res = await fetch("/api/gallery/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`Berhasil mengunggah ${data.data.length} foto`);
-        setFiles(null);
-        if (onSuccess) onSuccess();
-      } else {
-        toast.error(data.message || "Gagal mengunggah foto");
-      }
-    } catch (error) {
-      toast.error("Terjadi kesalahan sistem");
-    }
-    setUploading(false);
-  };
 
   const handleSendGDrive = async () => {
     if (!gdriveLink.trim()) {
@@ -58,6 +29,7 @@ export default function UploadGallery({
     const res = await sendGDriveLink(bookingId, gdriveLink);
     if (res.success) {
       toast.success(res.message);
+      if (onSuccess) onSuccess();
     } else {
       toast.error(res.message);
     }
@@ -66,43 +38,39 @@ export default function UploadGallery({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4 p-4 border rounded bg-gray-50 dark:bg-zinc-900/50 dark:border-zinc-800">
-        <h3 className="font-semibold text-lg">Upload Hasil Foto (Bulk)</h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">Pilih beberapa foto sekaligus. Sistem akan otomatis memasang watermark untuk pelanggan yang belum lunas.</p>
-        
-        <div className="flex items-center space-x-2">
-          <Input 
-            type="file" 
-            multiple 
-            accept="image/*" 
-            onChange={(e) => setFiles(e.target.files)} 
-            disabled={uploading}
-          />
-          <Button onClick={handleUpload} disabled={uploading || !files || files.length === 0} className="cursor-pointer">
-            {uploading ? "Mengunggahkan..." : "Upload Sekarang"}
-          </Button>
-        </div>
-      </div>
-
       {/* GDRIVE LINK SECTION */}
-      <div className="p-4 border rounded bg-gray-50 dark:bg-zinc-900/50 dark:border-zinc-800 space-y-4">
-        <h3 className="font-semibold text-lg">Kirim Link Google Drive Dedicated</h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
-          Masukkan tautan folder Google Drive hasil foto. Pelanggan wajib mengisi ulasan/komentar sebelum link ini aktif di halaman mereka.
+      <div className="p-6 border rounded-2xl bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 shadow-sm space-y-4">
+        <h3 className="font-bold text-lg text-slate-800 dark:text-white">Kirim Link Galeri Foto / Google Drive</h3>
+        <p className="text-sm text-slate-500 dark:text-zinc-400 leading-relaxed">
+          Masukkan tautan Google Drive atau layanan cloud penyimpanan foto hasil sesi. Pelanggan wajib mengisi ulasan/komentar terlebih dahulu untuk membuka akses tautan ini di dashboard mereka.
         </p>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Input 
             type="text" 
             placeholder="https://drive.google.com/drive/folders/..." 
             value={gdriveLink}
             onChange={(e) => setGdriveLink(e.target.value)}
             disabled={sendingGDrive}
+            className="flex-1 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl"
           />
-          <Button onClick={handleSendGDrive} disabled={sendingGDrive || !gdriveLink.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer whitespace-nowrap">
-            {sendingGDrive ? "Mengirim..." : "Kirim Link GDrive"}
+          <Button onClick={handleSendGDrive} disabled={sendingGDrive || !gdriveLink.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer whitespace-nowrap px-6 py-2 rounded-xl transition duration-205">
+            {sendingGDrive ? "Mengirim..." : "Kirim Tautan"}
           </Button>
         </div>
       </div>
+
+      {/* PRINT SELECTION VIEW FOR PHOTOGRAPHER */}
+      {initialPrintSelection && (
+        <div className="p-6 border rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+          <h3 className="font-bold text-lg text-indigo-900 dark:text-indigo-400">Pilihan Cetak Fisik Pelanggan</h3>
+          <p className="text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
+            Berikut adalah daftar nama file atau foto yang dipilih oleh pelanggan untuk dicetak fisik:
+          </p>
+          <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-indigo-100 dark:border-indigo-950 font-mono text-sm text-slate-800 dark:text-zinc-200 whitespace-pre-wrap">
+            {initialPrintSelection}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

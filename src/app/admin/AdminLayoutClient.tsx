@@ -21,6 +21,7 @@ import {
   Clock,
   Tag,
   Sparkles,
+  Printer,
 } from "lucide-react";
 
 interface AdminLayoutClientProps {
@@ -47,6 +48,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       name: "Daftar Booking",
       href: "/admin/bookings",
       icon: CalendarDays,
+    },
+    {
+      name: "Kelola Cetak Foto",
+      href: "/admin/prints",
+      icon: Printer,
     },
     {
       name: "Manajemen Antrean",

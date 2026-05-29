@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -111,6 +111,10 @@ model Booking {
   gdriveLink     String?   @map("gdrive_link")
   reviewRating   Int?      @map("review_rating")
   reviewComment  String?   @db.Text @map("review_comment")
+  printSelection String?   @db.Text @map("print_selection")
+  shippingAddress String?  @db.Text @map("shipping_address")
+  printStatus     String?  @map("print_status")
+  printPhotos     String?  @db.Text @map("print_photos")
 
   user          User      @relation(fields: [userId], references: [id])
   photographer  User?     @relation("PhotographerBookings", fields: [photographerId], references: [id])
