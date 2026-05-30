@@ -9,6 +9,7 @@ export const packageSchema = z.object({
   isPopular: z.boolean().default(false),
   ctaText: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
+  imageUrls: z.array(z.string()).optional(),
 });
 
 export type PackageInput = z.infer<typeof packageSchema>;

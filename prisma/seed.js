@@ -6,22 +6,7 @@ const path = require('path');
 const prisma = new PrismaClient();
 
 // Resolve the base URL dynamically from env or manual .env parsing
-let envNextAuthUrl = process.env.NEXTAUTH_URL;
-if (!envNextAuthUrl) {
-  try {
-    const envPath = path.join(__dirname, '../.env');
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, 'utf8');
-      const match = envContent.match(/^NEXTAUTH_URL=["']?([^"\n\r]+)["']?/m);
-      if (match) {
-        envNextAuthUrl = match[1];
-      }
-    }
-  } catch (err) {
-    console.warn("Could not parse .env file manually:", err.message);
-  }
-}
-const baseUrl = envNextAuthUrl || "http://localhost:3001";
+const baseUrl = "https://visual-space-nine.vercel.app";
 
 async function main() {
   console.log(`Seeding database using baseUrl: ${baseUrl}`);
@@ -211,18 +196,7 @@ async function main() {
   await prisma.systemSetting.upsert({ where: { key: "FULL_PAYMENT_DEADLINE_HOURS" }, update: {}, create: { key: "FULL_PAYMENT_DEADLINE_HOURS", value: "24" } });
   await prisma.systemSetting.upsert({ where: { key: "DP_MIN_DAYS_AHEAD" }, update: {}, create: { key: "DP_MIN_DAYS_AHEAD", value: "7" } });
 
-  // 6. Create Default Promos
-  console.log("Seeding promos...");
-  await prisma.promo.upsert({
-    where: { code: "DISKON10" },
-    update: {},
-    create: { code: "DISKON10", discountPercent: 10, isActive: true }
-  });
-  await prisma.promo.upsert({
-    where: { code: "HEBOH50" },
-    update: {},
-    create: { code: "HEBOH50", discountPercent: 50, isActive: true }
-  });
+
 
   // 7. Seed Completed Bookings with Reviews and proof images for testimonials
   console.log("Seeding bookings and reviews...");

@@ -7,8 +7,9 @@ export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Visual Space - Studio Photobooth Premium Mandiri",
-  description: "Abadikan Momen Seru Dengan Frame Estetik Pilihan. Reservasi realtime, cetak & unduh cepat.",
+  title: "Visual Space - Self-Photobooth Premium Realtime & Estetik",
+  description: "Studio self-photobooth premium mandiri dengan reservasi realtime terintegrasi Midtrans. Abadikan momen seru dengan pilihan frame estetik dan cetak foto cepat.",
+  keywords: "self-photobooth, photobooth jakarta, studio foto mandiri, self-photo studio, visual space, photobooth estetik, booking photobooth online, photo studio jakarta, photobooth premium",
 };
 
 export default async function Home() {

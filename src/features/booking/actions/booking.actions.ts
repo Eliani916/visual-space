@@ -94,56 +94,8 @@ export async function createBooking(data: BookingInput) {
 
       const packagePrice = Number(pkg.price);
 
-      // Validate promo code from database
+      // Validate promo code from database (Promo feature removed)
       let discountAmount = 0;
-      const code = validatedData.promoCode ? validatedData.promoCode.trim().toUpperCase() : "";
-      if (code !== "") {
-        const dbPromo = await tx.promo.findFirst({
-          where: {
-            code,
-            deletedAt: null,
-          },
-        });
-
-        if (!dbPromo) {
-          throw new Error("Kode promo tidak valid");
-        }
-
-        if (!dbPromo.isActive) {
-          throw new Error("Kode promo sudah tidak aktif");
-        }
-
-        // 1. Validate package suitability
-        if (dbPromo.applicablePackageIds) {
-          const allowedIds = dbPromo.applicablePackageIds
-            .split(",")
-            .map((id) => id.trim())
-            .filter(Boolean);
-          
-          if (allowedIds.length > 0 && !allowedIds.includes(validatedData.packageId)) {
-            throw new Error("Kode promo tidak berlaku untuk paket ini");
-          }
-        }
-
-        // 2. Validate usage quota (maxUses)
-        if (dbPromo.maxUses !== null && dbPromo.maxUses !== undefined) {
-          const usedCount = await tx.booking.count({
-            where: {
-              promoCode: dbPromo.code,
-              status: {
-                notIn: ["EXPIRED", "CANCELLED"],
-              },
-              deletedAt: null,
-            },
-          });
-
-          if (usedCount >= dbPromo.maxUses) {
-            throw new Error("Kuota penggunaan kode promo sudah habis");
-          }
-        }
-
-        discountAmount = packagePrice * (dbPromo.discountPercent / 100);
-      }
 
       const finalTotalPrice = packagePrice - discountAmount;
 
@@ -159,7 +111,7 @@ export async function createBooking(data: BookingInput) {
           bookingDate: new Date(validatedData.bookingDate),
           bookingTime: validatedData.bookingTime,
           totalPrice: finalTotalPrice,
-          promoCode: code !== "" ? code : null,
+          promoCode: validatedData.promoCode || null,
           discountAmount: discountAmount > 0 ? discountAmount : null,
           status: "PENDING",
           payment: {

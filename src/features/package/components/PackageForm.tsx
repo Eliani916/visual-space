@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { createPackage, updatePackage } from "../actions/package.actions";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Upload, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 
 type Props = {
   initialData?: any;
@@ -18,6 +19,7 @@ type Props = {
 
 export default function PackageForm({ initialData, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   
   const form = useForm<PackageInput>({
     resolver: zodResolver(packageSchema) as any,
@@ -30,6 +32,7 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
       isPopular: initialData?.isPopular || false,
       ctaText: initialData?.ctaText || "Pilih Paket",
       isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
+      imageUrls: initialData?.images?.map((img: any) => img.url) || [],
     },
   });
 
@@ -66,6 +69,101 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        <FormField
+          control={form.control}
+          name="imageUrls"
+          render={({ field }) => {
+            const urls = field.value || [];
+            
+            const handleRemoveImage = (indexToRemove: number) => {
+              const newUrls = urls.filter((_, idx) => idx !== indexToRemove);
+              field.onChange(newUrls);
+            };
+            
+            return (
+              <FormItem>
+                <FormLabel>Gambar Paket (Bisa Unggah Lebih dari 1)</FormLabel>
+                <div className="flex flex-col gap-3">
+                  {/* Grid Previews */}
+                  {urls.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {urls.map((url, idx) => (
+                        <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-800 bg-slate-900 group">
+                          <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 cursor-pointer border-0"
+                          >
+                            <Trash2 className="w-4.5 h-4.5 text-white" />
+                            Hapus
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Empty state placeholder when no images */}
+                  {urls.length === 0 && (
+                    <div className="w-full h-32 rounded-xl border-2 border-dashed border-slate-200 dark:border-zinc-800/80 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-zinc-950 p-4">
+                      <ImageIcon className="w-8 h-8 text-slate-350 mb-2" />
+                      <span className="text-xs text-slate-500 font-semibold">Belum ada gambar paket</span>
+                      <span className="text-[10px] text-slate-450 mt-1">Unggah gambar format JPG/PNG</span>
+                    </div>
+                  )}
+
+                  {/* Upload button wrapper */}
+                  <div className="relative flex items-center gap-3">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploading || loading}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("Ukuran file maksimal 5MB");
+                          return;
+                        }
+
+                        setUploading(true);
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        formData.append("type", "packages");
+
+                        try {
+                          const res = await fetch("/api/admin/upload", {
+                            method: "POST",
+                            body: formData,
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            field.onChange([...urls, data.url]);
+                            toast.success("Gambar berhasil diunggah");
+                          } else {
+                            toast.error(data.message || "Gagal mengunggah gambar");
+                          }
+                        } catch (err) {
+                          toast.error("Gagal mengunggah gambar");
+                        } finally {
+                          setUploading(false);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-750 hover:file:bg-indigo-100"
+                    />
+                    {uploading && (
+                      <Loader2 className="w-5 h-5 animate-spin text-indigo-650 shrink-0" />
+                    )}
+                  </div>
+                </div>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
         
         <div className="grid grid-cols-2 gap-4">
@@ -180,7 +278,7 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
           </div>
         </div>
 
-        <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+        <Button type="submit" disabled={loading || uploading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
           {loading ? "Menyimpan..." : "Simpan Paket"}
         </Button>
       </form>

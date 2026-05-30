@@ -31,6 +31,9 @@ export async function createPackage(data: PackageInput) {
         isPopular: validatedData.isPopular,
         ctaText: validatedData.ctaText,
         isActive: validatedData.isActive,
+        images: validatedData.imageUrls && validatedData.imageUrls.length > 0 ? {
+          create: validatedData.imageUrls.map((url) => ({ url }))
+        } : undefined
       },
     });
 
@@ -108,6 +111,22 @@ export async function updatePackage(id: string, data: PackageInput) {
         isActive: validatedData.isActive,
       },
     });
+
+    // Handle image update
+    if (validatedData.imageUrls !== undefined) {
+      await prisma.image.deleteMany({
+        where: { packageId: id }
+      });
+
+      if (validatedData.imageUrls && validatedData.imageUrls.length > 0) {
+        await prisma.image.createMany({
+          data: validatedData.imageUrls.map((url) => ({
+            url,
+            packageId: id,
+          })),
+        });
+      }
+    }
 
     revalidatePath("/admin/packages");
     revalidatePath("/");

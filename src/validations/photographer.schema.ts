@@ -5,6 +5,7 @@ export const photographerSchema = z.object({
   email: z.string().email("Format email tidak valid"),
   phoneNumber: z.string().optional().or(z.literal("")),
   password: z.string().optional().or(z.literal("")),
+  imageUrl: z.string().optional().nullable(),
 });
 
 export type PhotographerInput = z.infer<typeof photographerSchema>;

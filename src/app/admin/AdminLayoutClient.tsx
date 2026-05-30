@@ -86,11 +86,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       href: "/admin/photographers",
       icon: Users,
     },
-    {
-      name: "Manajemen Promo",
-      href: "/admin/promos",
-      icon: Tag,
-    },
+
     {
       name: "Konten Landing Page",
       href: "/admin/landing-page",

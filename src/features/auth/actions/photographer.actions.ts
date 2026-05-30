@@ -29,6 +29,10 @@ export async function getPhotographers() {
         email: true,
         phoneNumber: true,
         createdAt: true,
+        images: {
+          take: 1,
+          select: { url: true }
+        }
       },
       orderBy: {
         createdAt: "desc",
@@ -44,7 +48,7 @@ export async function getPhotographers() {
 export async function createPhotographer(data: any) {
   try {
     await requireAdmin();
-    const { name, email, password, phoneNumber } = data;
+    const { name, email, password, phoneNumber, imageUrl } = data;
 
     if (!name || !email || !password) {
       return { success: false, message: "Nama, email, dan kata sandi wajib diisi." };
@@ -89,6 +93,11 @@ export async function createPhotographer(data: any) {
         password: passwordHash,
         phoneNumber,
         roleId: role.id,
+        images: imageUrl ? {
+          create: {
+            url: imageUrl
+          }
+        } : undefined
       },
     });
 
@@ -101,7 +110,7 @@ export async function createPhotographer(data: any) {
 export async function updatePhotographer(id: string, data: any) {
   try {
     await requireAdmin();
-    const { name, email, password, phoneNumber } = data;
+    const { name, email, password, phoneNumber, imageUrl } = data;
 
     if (!name || !email) {
       return { success: false, message: "Nama dan email wajib diisi." };
@@ -148,6 +157,33 @@ export async function updatePhotographer(id: string, data: any) {
       where: { id },
       data: updateData,
     });
+
+    // Handle avatar image update
+    if (imageUrl !== undefined) {
+      const existingImage = await prisma.image.findFirst({
+        where: { userId: id }
+      });
+
+      if (existingImage) {
+        if (imageUrl) {
+          await prisma.image.update({
+            where: { id: existingImage.id },
+            data: { url: imageUrl }
+          });
+        } else {
+          await prisma.image.delete({
+            where: { id: existingImage.id }
+          });
+        }
+      } else if (imageUrl) {
+        await prisma.image.create({
+          data: {
+            url: imageUrl,
+            userId: id
+          }
+        });
+      }
+    }
 
     return { success: true, data: photographer };
   } catch (error: any) {

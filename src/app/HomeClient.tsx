@@ -34,6 +34,7 @@ interface HomeClientProps {
 export default function HomeClient({ features, steps, faqs, packages, testimonials, session }: HomeClientProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -41,6 +42,52 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
 
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-slate-50 flex flex-col relative overflow-hidden">
+      {/* Schema.org JSON-LD Structured Data for LocalBusiness */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            "name": "Visual Space Studio",
+            "image": "https://visual-space-nine.vercel.app/image/paket/studio.png",
+            "@id": "https://visual-space-nine.vercel.app/#website",
+            "url": "https://visual-space-nine.vercel.app",
+            "telephone": "+628123456789",
+            "priceRange": "Rp150000 - Rp450000",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Jl. Studio Photobooth Premium No. 12",
+              "addressLocality": "Jakarta Selatan",
+              "postalCode": "12345",
+              "addressCountry": "ID"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": -6.2088,
+              "longitude": 106.8456
+            },
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ],
+              "opens": "09:00",
+              "closes": "21:00"
+            },
+            "sameAs": [
+              "https://www.instagram.com/visualspace"
+            ]
+          })
+        }}
+      />
+
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-600/10 blur-[130px]" />
@@ -165,9 +212,9 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
 
                     <div className="h-px bg-slate-800/80 my-1" />
                     <button
-                      onClick={async () => {
+                      onClick={() => {
                         setIsUserMenuOpen(false);
-                        await signOut({ callbackUrl: window.location.origin });
+                        setShowLogoutConfirm(true);
                       }}
                       className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
                     >
@@ -489,6 +536,36 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
           <p className="text-xs">&copy; {new Date().getFullYear()} Visual Space Studio. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="relative w-full max-w-sm rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 z-50">
+            <h3 className="text-base font-black text-white">Konfirmasi Keluar</h3>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed font-semibold">
+              Apakah Anda yakin ingin keluar dari akun Anda?
+            </p>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800 rounded-xl transition cursor-pointer border-0 bg-transparent"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLogoutConfirm(false);
+                  await signOut({ callbackUrl: window.location.origin });
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/10 transition cursor-pointer border-0"
+              >
+                Ya, Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
