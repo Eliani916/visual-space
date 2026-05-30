@@ -18,6 +18,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { generateRemainingPaymentToken } from "@/features/booking/actions/booking.actions";
 
 interface CustomerBookingDetailClientProps {
   booking: any;
@@ -85,6 +86,37 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
     setLoading(false);
   };
 
+  const handlePayRemaining = async () => {
+    setLoading(true);
+    const res = await generateRemainingPaymentToken(booking.id);
+    if (res.success && res.data?.token) {
+      if (window.snap) {
+        window.snap.pay(res.data.token, {
+          onSuccess: function (result: any) {
+            toast.success("Pembayaran sisa berhasil!");
+            router.refresh();
+          },
+          onPending: function (result: any) {
+            toast.info("Menunggu pembayaran pelunasan Anda!");
+            router.refresh();
+          },
+          onError: function (result: any) {
+            toast.error("Pembayaran pelunasan gagal!");
+            router.refresh();
+          },
+          onClose: function () {
+            toast.warning("Anda menutup popup pembayaran.");
+          },
+        });
+      } else {
+        toast.error("Gagal memuat sistem pembayaran. Silakan coba lagi.");
+      }
+    } else {
+      toast.error(res.message || "Gagal memproses pelunasan");
+    }
+    setLoading(false);
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -124,7 +156,7 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
 
   return (
     <>
-      {isTransfer && isPaymentPending && token && (
+      {isTransfer && (isPaymentPending || booking.payment?.status === "DP") && (
         <Script
           src={snapScriptUrl}
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
@@ -255,8 +287,8 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
                       Silakan selesaikan pembayaran DP/Lunas melalui Midtrans untuk mengonfirmasi pemesanan jadwal Anda. Jika popup tertutup, klik tombol **"Bayar Sekarang"** di samping kanan.
                     </p>
                   ) : (
-                    <p className="text-slate-600 dark:text-zinc-450 leading-relaxed">
-                      Anda memilih metode pembayaran **Cash di Studio**. Pemesanan Anda telah terdaftar dan akan segera dikonfirmasi oleh Admin. Harap siapkan pembayaran tunai sebesar Rp {Number(booking.totalPrice).toLocaleString("id-ID")} saat kedatangan.
+                    <p className="text-slate-600 dark:text-zinc-450 leading-relaxed font-semibold">
+                      Anda memilih metode pembayaran **Bayar di Studio (Cash)**. Harap lakukan pembayaran tunai di kasir studio sebelum sesi foto dimulai. Pemesanan ini harus dikonfirmasi/dibayar selambat-lambatnya sebelum batas waktu H-7 (atau batas kebijakan studio), atau pemesanan Anda akan dibatalkan otomatis oleh sistem.
                     </p>
                   )}
                 </div>
@@ -276,13 +308,26 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
             )}
 
             {booking.status === "ON_PROGRESS" && (
-              <div className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl flex items-start gap-3.5">
-                <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs">
-                  <h4 className="font-bold text-blue-850 dark:text-blue-400">Sesi Foto Sedang Berjalan</h4>
-                  <p className="text-slate-600 dark:text-zinc-450 leading-relaxed">
-                    Sesi foto Anda sedang berjalan di studio. Nikmati waktu foto Anda bersama teman/keluarga! Hasil foto digital (Soft File) akan diunggah oleh fotografer kami segera setelah sesi foto Anda selesai.
-                  </p>
+              <div className="space-y-4">
+                {booking.payment?.status === "DP" && (
+                  <div className="bg-amber-500/5 border border-amber-500/20 p-5 rounded-2xl flex items-start gap-3.5">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-xs">
+                      <h4 className="font-bold text-amber-850 dark:text-amber-400">Pembayaran DP Terverifikasi - Sisa Pelunasan Wajib</h4>
+                      <p className="text-slate-600 dark:text-zinc-450 leading-relaxed">
+                        Anda telah melakukan pembayaran DP 50%. Sesi foto Anda sudah dapat dilaksanakan di studio. Silakan lakukan pelunasan sisa 50% via Midtrans (tombol di sebelah kanan) atau bayar secara tunai (cash) ke kasir studio.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl flex items-start gap-3.5">
+                  <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-xs">
+                    <h4 className="font-bold text-blue-850 dark:text-blue-400">Sesi Foto Sedang Berjalan</h4>
+                    <p className="text-slate-600 dark:text-zinc-450 leading-relaxed">
+                      Sesi foto Anda sedang berjalan di studio. Nikmati waktu foto Anda bersama teman/keluarga! Hasil foto digital (Soft File) akan diunggah oleh fotografer kami segera setelah sesi foto Anda selesai.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -348,6 +393,29 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
                 >
                   {loading ? "Memproses..." : "Bayar Sekarang via Midtrans"}
                 </Button>
+              )}
+
+              {/* Remaining Payment Button */}
+              {isTransfer && booking.payment?.status === "DP" && (
+                <div className="space-y-3 mt-4 border-t border-slate-100 dark:border-zinc-800/40 pt-4">
+                  <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl text-xxs text-indigo-400 font-semibold leading-relaxed">
+                    Sesi foto Anda sudah aktif karena Anda telah membayar DP 50%. Anda dapat melunasi sisa pembayaran via Midtrans di bawah ini.
+                  </div>
+                  <Button
+                    onClick={handlePayRemaining}
+                    disabled={loading}
+                    className="w-full py-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 border-0 disabled:opacity-40"
+                  >
+                    {loading ? "Memproses..." : `Bayar Pelunasan via Midtrans (Rp ${(Number(booking.totalPrice) * 0.5).toLocaleString("id-ID")})`}
+                  </Button>
+                </div>
+              )}
+
+              {/* Cash payment warning note */}
+              {booking.payment?.method === "CASH" && booking.payment?.status === "PENDING" && (
+                <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-xl text-xxs text-orange-400 font-semibold leading-relaxed mt-4">
+                  Metode pembayaran terpilih adalah **Bayar di Studio (Cash)**. Harap lakukan pembayaran tunai di kasir studio sebelum sesi foto dimulai. Pemesanan ini harus dikonfirmasi/dibayar selambat-lambatnya sebelum batas waktu H-7 (atau batas kebijakan studio), atau pemesanan Anda akan dibatalkan otomatis oleh sistem.
+                </div>
               )}
             </div>
           </div>

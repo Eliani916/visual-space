@@ -11,9 +11,8 @@ import { Suspense } from "react";
 import { Camera, Eye, EyeOff, KeyRound, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
-  sendPasswordResetOtp, 
-  verifyPasswordResetOtp, 
-  resetPasswordWithOtp 
+  checkEmailExists, 
+  resetPasswordWithoutOtp 
 } from "@/features/auth/actions/password-reset.actions";
 
 // Custom Password Input Component with Eye Icon Toggle
@@ -51,30 +50,13 @@ function LoginForm() {
 
   const [loading, setLoading] = useState(false);
   
-  // Auth mode state: login, forgot, otp, reset
-  const [mode, setMode] = useState<"login" | "forgot" | "otp" | "reset">("login");
+  // Auth mode state: login, forgot, reset
+  const [mode, setMode] = useState<"login" | "forgot" | "reset">("login");
   
   // Form states
   const [form, setForm] = useState({ email: "", password: "" });
   const [forgotEmail, setForgotEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
   const [resetForm, setResetForm] = useState({ password: "", confirmPassword: "" });
-
-  // Timer states
-  const [timer, setTimer] = useState(60);
-  const [timerActive, setTimerActive] = useState(false);
-
-  useEffect(() => {
-    let interval: any = null;
-    if (timerActive && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else if (timer === 0) {
-      setTimerActive(false);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive, timer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,48 +109,9 @@ function LoginForm() {
     }
     setLoading(true);
     
-    const res = await sendPasswordResetOtp(forgotEmail);
+    const res = await checkEmailExists(forgotEmail);
     if (res.success) {
-      toast.success(res.message);
-      setOtpCode("");
-      setTimer(60);
-      setTimerActive(true);
-      setMode("otp");
-    } else {
-      toast.error(res.message);
-    }
-    setLoading(false);
-  };
-
-  const handleResendOtp = async () => {
-    setLoading(true);
-    const res = await sendPasswordResetOtp(forgotEmail);
-    if (res.success) {
-      toast.success("Kode OTP baru telah dikirim.");
-      setOtpCode("");
-      setTimer(60);
-      setTimerActive(true);
-    } else {
-      toast.error(res.message);
-    }
-    setLoading(false);
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpCode) {
-      toast.error("Silakan masukkan kode OTP");
-      return;
-    }
-    if (timer === 0) {
-      toast.error("Kode OTP telah kedaluwarsa. Silakan kirim ulang.");
-      return;
-    }
-    setLoading(true);
-
-    const res = await verifyPasswordResetOtp(forgotEmail, otpCode);
-    if (res.success) {
-      toast.success(res.message);
+      toast.success("Email ditemukan. Silakan masukkan kata sandi baru.");
       setMode("reset");
     } else {
       toast.error(res.message);
@@ -192,7 +135,7 @@ function LoginForm() {
     }
     setLoading(true);
     
-    const res = await resetPasswordWithOtp(forgotEmail, otpCode, {
+    const res = await resetPasswordWithoutOtp(forgotEmail, {
       password: resetForm.password,
       confirmPassword: resetForm.confirmPassword,
     });
@@ -202,7 +145,6 @@ function LoginForm() {
       // reset states
       setResetForm({ password: "", confirmPassword: "" });
       setForgotEmail("");
-      setOtpCode("");
       setMode("login");
     } else {
       toast.error(res.message);
@@ -290,7 +232,7 @@ function LoginForm() {
             <>
               <h2 className="text-xl font-bold mb-3 text-center text-slate-200">Lupa Kata Sandi</h2>
               <p className="text-xs text-slate-400 text-center mb-8">
-                Masukkan alamat email yang terdaftar pada akun Anda untuk mengirimkan kode OTP verifikasi.
+                Masukkan alamat email yang terdaftar pada akun Anda untuk memperbarui kata sandi.
               </p>
               
               <form onSubmit={handleSendResetLink} className="space-y-5">
@@ -311,7 +253,7 @@ function LoginForm() {
                   className="w-full py-5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98] transition-all font-bold text-sm text-white border-0 mt-6 cursor-pointer" 
                   disabled={loading}
                 >
-                  {loading ? "Mengirim OTP..." : "Kirim Kode OTP"}
+                  {loading ? "Memproses..." : "Lanjutkan"}
                 </Button>
               </form>
 
@@ -327,82 +269,6 @@ function LoginForm() {
             </>
           )}
 
-          {/* Mode: OTP VERIFICATION */}
-          {mode === "otp" && (
-            <>
-              <div className="flex justify-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
-                  <Timer className="w-5 h-5 text-purple-400" />
-                </div>
-              </div>
-              <h2 className="text-xl font-bold mb-2 text-center text-slate-200">Masukkan Kode OTP</h2>
-              <p className="text-xs text-slate-400 text-center mb-6">
-                Kami telah mengirimkan 6 digit kode OTP ke email <span className="text-slate-200 font-semibold">{forgotEmail}</span>.
-              </p>
-              
-              <form onSubmit={handleVerifyOtp} className="space-y-5">
-                <div>
-                  <label className="text-xs font-semibold text-slate-400 block mb-1.5">Kode OTP (6 Digit)</label>
-                  <Input 
-                    type="text" 
-                    required 
-                    maxLength={6}
-                    value={otpCode} 
-                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))} 
-                    placeholder="123456" 
-                    className="bg-slate-950 border-slate-900 focus-visible:border-purple-500 focus-visible:ring-purple-500/20 text-slate-100 py-6 text-center text-xl font-black tracking-widest rounded-xl placeholder:text-slate-800"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-xs py-2 px-1">
-                  <span className="text-slate-500 font-medium">Sisa waktu:</span>
-                  {timer > 0 ? (
-                    <span className={cn(
-                      "font-bold text-sm",
-                      timer <= 15 ? "text-red-400 animate-pulse" : "text-amber-400"
-                    )}>
-                      00:{timer < 10 ? `0${timer}` : timer}
-                    </span>
-                  ) : (
-                    <span className="text-red-405 font-bold">Waktu Habis / Kedaluwarsa</span>
-                  )}
-                </div>
-
-                {timer > 0 ? (
-                  <Button 
-                    type="submit" 
-                    className="w-full py-5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98] transition-all font-bold text-sm text-white border-0 cursor-pointer" 
-                    disabled={loading}
-                  >
-                    {loading ? "Memverifikasi..." : "Verifikasi OTP"}
-                  </Button>
-                ) : (
-                  <Button 
-                    type="button"
-                    onClick={handleResendOtp}
-                    className="w-full py-5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:text-white transition-all font-bold text-sm text-slate-350 cursor-pointer"
-                    disabled={loading}
-                  >
-                    {loading ? "Memproses..." : "Kirim Ulang OTP"}
-                  </Button>
-                )}
-              </form>
-
-              <div className="mt-8 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimerActive(false);
-                    setMode("forgot");
-                  }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-300 transition hover:underline"
-                >
-                  Kembali ke Input Email
-                </button>
-              </div>
-            </>
-          )}
-
           {/* Mode: RESET PASSWORD */}
           {mode === "reset" && (
             <>
@@ -412,7 +278,7 @@ function LoginForm() {
                 </div>
               </div>
               <h2 className="text-xl font-bold mb-2 text-center text-slate-200">Buat Kata Sandi Baru</h2>
-              <p className="text-xs text-slate-500 text-center mb-8">
+              <p className="text-xs text-slate-400 text-center mb-8">
                 Memulihkan akun untuk: <span className="text-slate-300 font-semibold">{forgotEmail}</span>
               </p>
               
@@ -450,7 +316,6 @@ function LoginForm() {
                   type="button"
                   onClick={() => {
                     setForgotEmail("");
-                    setOtpCode("");
                     setMode("login");
                   }}
                   className="text-xs font-semibold text-slate-500 hover:text-slate-300 transition hover:underline"

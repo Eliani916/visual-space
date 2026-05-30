@@ -65,6 +65,20 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
             <a href="#paket" className="hover:text-blue-400 transition">Paket Harga</a>
             <a href="#testimoni" className="hover:text-blue-400 transition">Testimoni</a>
             <a href="#faq" className="hover:text-blue-400 transition">FAQ</a>
+            {session && (
+              <Link 
+                href={
+                  session.user.role === "ADMIN" 
+                    ? "/admin/dashboard" 
+                    : session.user.role === "FOTOGRAFER" 
+                      ? "/fotografer/dashboard" 
+                      : "/dashboard"
+                } 
+                className="text-purple-400 hover:text-purple-300 font-semibold transition"
+              >
+                Dashboard
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-4 relative z-10">

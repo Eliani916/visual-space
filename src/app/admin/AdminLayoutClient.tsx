@@ -24,6 +24,7 @@ import {
   Printer,
   ChevronLeft,
   ChevronRight,
+  Home,
 } from "lucide-react";
 
 interface AdminLayoutClientProps {
@@ -32,6 +33,7 @@ interface AdminLayoutClientProps {
     name?: string | null;
     email?: string | null;
     role?: string | null;
+    image?: string | null;
   };
 }
 
@@ -42,8 +44,18 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navigation = [
+    {
+      name: "Halaman Utama",
+      href: "/",
+      icon: Home,
+    },
     {
       name: "Dashboard Analitik",
       href: "/admin/dashboard",
@@ -161,7 +173,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         {/* Sidebar Links */}
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive = item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
 
             return (
@@ -230,7 +244,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             {/* Navigation links */}
             <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
               {navigation.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const isActive = item.href === "/"
+                  ? pathname === "/"
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
                 const Icon = item.icon;
 
                 return (
@@ -274,12 +290,14 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
           {/* Right section: Quick profile + role badge */}
           <div className="flex items-center gap-4">
             {/* Quick theme toggle for desktop */}
-            <button
+             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800 focus:outline-none transition-all cursor-pointer"
               title="Toggle theme"
             >
-              {theme === "dark" ? (
+              {!mounted ? (
+                <div className="w-5 h-5" />
+              ) : theme === "dark" ? (
                 <Sun className="w-5 h-5 text-amber-500" />
               ) : (
                 <Moon className="w-5 h-5 text-indigo-600" />
@@ -295,8 +313,12 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800/85 transition-all focus:outline-none cursor-pointer"
               >
-                <div className="w-8.5 h-8.5 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                  {getInitials(user?.name)}
+                <div className="w-8.5 h-8.5 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm overflow-hidden shrink-0">
+                  {user?.image ? (
+                    <img src={user.image} alt={user.name || "User"} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(user?.name)
+                  )}
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-semibold text-slate-800 dark:text-zinc-150 leading-tight">
@@ -326,6 +348,16 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           {user?.role || "ADMIN"}
                         </span>
                       </p>
+                    </div>
+                    <div className="p-1.5 border-b border-slate-100 dark:border-zinc-800/60">
+                      <Link
+                        href="/admin/profile"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:text-zinc-300 dark:hover:bg-zinc-800/60 rounded-xl transition border-0 text-left cursor-pointer"
+                      >
+                        <User className="w-4 h-4 text-indigo-500" />
+                        <span>Edit Profil</span>
+                      </Link>
                     </div>
                     <div className="p-1.5">
                       <button

@@ -58,7 +58,7 @@ export default function QueueDashboard() {
         <Button variant="default" onClick={fetchQueues}>Refresh Data</Button>
       </div>
       
-      <div className="bg-white p-6 rounded-lg shadow border">
+      <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200 dark:border-zinc-800/80 shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

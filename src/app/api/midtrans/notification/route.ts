@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { coreApi } from "@/services/midtrans.service";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { pusherServer } from "@/lib/pusher";
 
 export async function POST(req: Request) {
   try {
@@ -17,60 +18,97 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid signature" }, { status: 403 });
     }
 
+    const orderId = notificationJson.order_id;
+    const isRemainingPayment = orderId.endsWith("-remaining");
+    const paymentId = isRemainingPayment ? orderId.replace("-remaining", "") : orderId;
+
     const transactionStatus = notificationJson.transaction_status;
     const fraudStatus = notificationJson.fraud_status;
-    const paymentId = notificationJson.order_id; // we used payment.id as order_id
 
     let newStatus = "PENDING";
     let bookingStatus = "PENDING";
 
-    if (transactionStatus == 'capture'){
-      if (fraudStatus == 'challenge'){
-        // TODO: set transaction status on your databaase to 'challenge'
+    if (transactionStatus === 'capture'){
+      if (fraudStatus === 'challenge'){
         newStatus = "PENDING";
-      } else if (fraudStatus == 'accept'){
-        newStatus = "DP"; // or LUNAS depending on amount, but we'll assume DP for now, or check amount
-        bookingStatus = "CONFIRMED";
+      } else if (fraudStatus === 'accept'){
+        newStatus = "DP";
+        bookingStatus = "ON_PROGRESS";
       }
-    } else if (transactionStatus == 'settlement'){
+    } else if (transactionStatus === 'settlement'){
       newStatus = "DP"; 
-      bookingStatus = "CONFIRMED";
-    } else if (transactionStatus == 'cancel' ||
-      transactionStatus == 'deny' ||
-      transactionStatus == 'expire'){
+      bookingStatus = "ON_PROGRESS";
+    } else if (transactionStatus === 'cancel' ||
+      transactionStatus === 'deny' ||
+      transactionStatus === 'expire'){
       newStatus = "GAGAL";
       bookingStatus = "EXPIRED";
-    } else if (transactionStatus == 'pending'){
+    } else if (transactionStatus === 'pending'){
       newStatus = "PENDING";
     }
 
-    // Check actual amount to determine DP vs LUNAS if needed.
-    // For now we will update the payment status based on transactionStatus.
-    
     // We get the payment to see if it's full or DP
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { booking: { include: { package: true } } }
+      include: { booking: { include: { package: true, user: true } } }
     });
 
     if (payment) {
-      // Determine if it's LUNAS or DP based on amount vs total
-      if (newStatus === "DP") {
+      if (isRemainingPayment && (newStatus === "DP" || newStatus === "LUNAS")) {
+        newStatus = "LUNAS";
+        bookingStatus = payment.booking.status === "PENDING" ? "ON_PROGRESS" : payment.booking.status;
+      } else if (newStatus === "DP") {
         if (Number(payment.amount) >= Number(payment.booking.totalPrice)) {
           newStatus = "LUNAS";
         }
+        bookingStatus = payment.booking.status === "PENDING" ? "ON_PROGRESS" : payment.booking.status;
       }
 
-      await prisma.$transaction([
-        prisma.payment.update({
+      await prisma.$transaction(async (tx) => {
+        await tx.payment.update({
           where: { id: paymentId },
-          data: { status: newStatus as any },
-        }),
-        prisma.booking.update({
+          data: { 
+            status: newStatus as any,
+            amount: newStatus === "LUNAS" ? payment.booking.totalPrice : payment.amount
+          },
+        });
+
+        await tx.booking.update({
           where: { id: payment.bookingId },
           data: { status: bookingStatus as any },
-        }),
-      ]);
+        });
+
+        // Automatically create queue if status is ON_PROGRESS
+        if (bookingStatus === "ON_PROGRESS") {
+          const queue = await tx.queue.upsert({
+            where: { bookingId: payment.bookingId },
+            update: { status: "WAITING", checkInTime: new Date() },
+            create: { bookingId: payment.bookingId, status: "WAITING", checkInTime: new Date() },
+          });
+
+          // Trigger Pusher event for photographer dashboard
+          try {
+            await pusherServer.trigger("photographer-dashboard", "queue-updated", {
+              queueId: queue.id,
+              customerName: payment.booking.user.name,
+              packageName: payment.booking.package.name,
+              time: queue.checkInTime,
+              status: queue.status,
+            });
+          } catch (err) {
+            console.error("Failed to trigger Pusher for photographer dashboard:", err);
+          }
+        }
+      });
+
+      // Trigger Pusher event
+      try {
+        await pusherServer.trigger("calendar-channel", "calendar-updated", {
+          message: "Jadwal booking diperbarui dari Midtrans"
+        });
+      } catch (err) {
+        console.error("Failed to trigger Pusher inside Midtrans webhook:", err);
+      }
     }
 
     return NextResponse.json({ success: true, message: "OK" });

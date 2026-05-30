@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminBookings } from "../actions/admin-booking.actions";
+import { getAdminBookings, confirmPendingCashBooking, confirmRemainingCashPayment } from "../actions/admin-booking.actions";
 import { checkInCustomer } from "@/features/queue/actions/queue.actions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -40,6 +40,28 @@ export default function AdminBookingList() {
   const handleCheckIn = async (bookingId: string) => {
     if (!confirm("Check-in pelanggan ini ke antrean?")) return;
     const res = await checkInCustomer(bookingId);
+    if (res.success) {
+      toast.success(res.message);
+      fetchBookings();
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  const handleConfirmPendingCash = async (bookingId: string) => {
+    if (!confirm("Konfirmasi pembayaran cash dan check-in pelanggan ini?")) return;
+    const res = await confirmPendingCashBooking(bookingId);
+    if (res.success) {
+      toast.success(res.message);
+      fetchBookings();
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  const handleConfirmRemainingCash = async (bookingId: string) => {
+    if (!confirm("Selesaikan pelunasan sisa pembayaran cash untuk booking ini?")) return;
+    const res = await confirmRemainingCashPayment(bookingId);
     if (res.success) {
       toast.success(res.message);
       fetchBookings();
@@ -318,13 +340,21 @@ export default function AdminBookingList() {
                       </div>
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {b.status === 'CONFIRMED' && !b.queue ? (
+                  <TableCell className="text-right space-x-2">
+                    {b.status === 'PENDING' && b.payment?.method === 'CASH' && (
+                      <Button size="sm" onClick={() => handleConfirmPendingCash(b.id)} className="h-8 text-xs font-semibold px-4 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white border-0">Konfirmasi & Check-In (Cash)</Button>
+                    )}
+                    {b.payment?.status === 'DP' && (
+                      <Button size="sm" onClick={() => handleConfirmRemainingCash(b.id)} className="h-8 text-xs font-semibold px-4 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white border-0">Selesaikan Pembayaran Cash</Button>
+                    )}
+                    {b.status === 'CONFIRMED' && !b.queue && (
                       <Button size="sm" onClick={() => handleCheckIn(b.id)} className="h-8 text-xs font-semibold px-4 cursor-pointer">Check-In</Button>
-                    ) : b.queue ? (
-                      <span className="inline-flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 px-2.5 py-1 rounded-full">Dalam Antrean ({b.queue.status})</span>
-                    ) : (
-                      <span className="text-xs text-slate-400 dark:text-zinc-550">Tidak tersedia</span>
+                    )}
+                    {b.queue && (
+                      <span className="inline-flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 px-2.5 py-1 rounded-full">Antrean ({b.queue.status})</span>
+                    )}
+                    {!b.queue && b.status !== 'CONFIRMED' && !(b.status === 'PENDING' && b.payment?.method === 'CASH') && b.payment?.status !== 'DP' && (
+                      <span className="text-xs text-slate-400 dark:text-zinc-550">Tidak ada aksi</span>
                     )}
                   </TableCell>
                 </TableRow>

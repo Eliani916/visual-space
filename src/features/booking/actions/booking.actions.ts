@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { bookingSchema, BookingInput } from "@/validations/booking.schema";
 import { createTransaction } from "@/services/midtrans.service";
 import { getSettings } from "./settings.actions";
+import { pusherServer } from "@/lib/pusher";
 
 export async function createBooking(data: BookingInput) {
   try {
@@ -218,6 +219,15 @@ export async function createBooking(data: BookingInput) {
       timeout: 15000 // 15 seconds to allow for Midtrans API call
     });
 
+    // Trigger Pusher event
+    try {
+      await pusherServer.trigger("calendar-channel", "calendar-updated", {
+        message: "Jadwal booking baru ditambahkan"
+      });
+    } catch (err) {
+      console.error("Failed to trigger Pusher for booking creation:", err);
+    }
+
     return { 
       success: true, 
       data: result
@@ -274,5 +284,132 @@ export async function getAvailableTimes(dateStr: string) {
   } catch (error) {
     console.error("Get Available Times Error:", error);
     return { success: false, data: [] };
+  }
+}
+
+export async function getCalendarBookingsStatus(year: number, month: number) {
+  try {
+    const settingsRes = await getSettings();
+    if (!settingsRes.success || !settingsRes.data) throw new Error("Gagal load settings");
+    const settings = settingsRes.data;
+
+    // Opening & closing hour bounds
+    const startHour = parseInt(settings.openingHour.split(":")[0]);
+    const endHour = parseInt(settings.closingHour.split(":")[0]);
+    
+    // Total photographers count
+    const photographerCount = await prisma.user.count({
+      where: { role: { name: "FOTOGRAFER" } }
+    });
+
+    // Date range for the requested month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1); // 1st of next month (exclusive)
+
+    // Get bookings in that month
+    const bookings = await prisma.booking.findMany({
+      where: {
+        bookingDate: {
+          gte: startDate,
+          lt: endDate
+        },
+        status: { notIn: ["EXPIRED", "CANCELLED"] },
+        photographerId: { not: null }
+      },
+      select: {
+        bookingDate: true,
+        bookingTime: true
+      }
+    });
+
+    // Map bookings to format YYYY-MM-DD
+    const formattedBookings = bookings.map(b => {
+      const date = b.bookingDate;
+      const y = date.getFullYear();
+      const m = (date.getMonth() + 1).toString().padStart(2, "0");
+      const d = date.getDate().toString().padStart(2, "0");
+      const dateStr = `${y}-${m}-${d}`;
+      const timeStr = b.bookingTime.substring(0, 5);
+      return { date: dateStr, time: timeStr };
+    });
+
+    return {
+      success: true,
+      data: {
+        bookings: formattedBookings,
+        photographerCount,
+        openingHour: settings.openingHour,
+        closingHour: settings.closingHour
+      }
+    };
+  } catch (error: any) {
+    console.error("Get Calendar Bookings Status Error:", error);
+    return { success: false, message: error.message || "Gagal memuat status kalender" };
+  }
+}
+
+export async function generateRemainingPaymentToken(bookingId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      throw new Error("Anda harus login untuk melakukan transaksi");
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true, package: true, user: true }
+    });
+
+    if (!booking) throw new Error("Booking tidak ditemukan");
+    if (!booking.payment) throw new Error("Pembayaran tidak ditemukan");
+    if (booking.payment.status !== "DP") {
+      throw new Error("Pemesanan ini tidak memiliki tagihan sisa (status bukan DP)");
+    }
+
+    const remainingAmount = Number(booking.totalPrice) - Number(booking.payment.amount);
+
+    if (remainingAmount <= 0) {
+      throw new Error("Tagihan sisa tidak valid");
+    }
+
+    const customerDetails = {
+      first_name: booking.user.name,
+      email: booking.user.email,
+    };
+
+    const itemDetails = [{
+      id: booking.package.id,
+      price: remainingAmount,
+      quantity: 1,
+      name: `Pelunasan (50%): ${booking.package.name}`
+    }];
+
+    // Suffix order ID with '-remaining' to satisfy Midtrans unique ID constraint
+    const midtransTx = await createTransaction(
+      `${booking.payment.id}-remaining`,
+      remainingAmount,
+      customerDetails,
+      itemDetails
+    );
+
+    const token = midtransTx.token;
+    const redirectUrl = midtransTx.redirect_url;
+
+    // Update payment's proofUrl with the remaining payment token
+    await prisma.payment.update({
+      where: { id: booking.payment.id },
+      data: { proofUrl: token }
+    });
+
+    return {
+      success: true,
+      data: {
+        token,
+        redirectUrl
+      }
+    };
+  } catch (error: any) {
+    console.error("Generate Remaining Payment Token Error:", error.message);
+    return { success: false, message: error.message || "Gagal membuat transaksi pelunasan" };
   }
 }

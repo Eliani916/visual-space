@@ -138,3 +138,74 @@ export async function resetPasswordWithOtp(email: string, code: string, password
     return { success: false, message: "Gagal memperbarui kata sandi: " + error.message };
   }
 }
+
+/**
+ * Checks if an email exists in the database.
+ */
+export async function checkEmailExists(email: string) {
+  try {
+    if (!email) {
+      return { success: false, message: "Email wajib diisi." };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return { success: false, message: "Email belum terdaftar." };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("checkEmailExists error:", error);
+    return { success: false, message: "Gagal memeriksa email: " + error.message };
+  }
+}
+
+/**
+ * Resets the password directly without OTP.
+ */
+export async function resetPasswordWithoutOtp(email: string, passwordResetData: any) {
+  try {
+    const { password, confirmPassword } = passwordResetData;
+
+    if (!email || !password || !confirmPassword) {
+      return { success: false, message: "Semua kolom wajib diisi." };
+    }
+
+    if (password !== confirmPassword) {
+      return { success: false, message: "Konfirmasi kata sandi tidak cocok." };
+    }
+
+    if (password.length < 6) {
+      return { success: false, message: "Kata sandi minimal 6 karakter." };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return { success: false, message: "Email belum terdaftar." };
+    }
+
+    // Update password
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { email },
+      data: {
+        password: passwordHash,
+      },
+    });
+
+    return { 
+      success: true, 
+      message: "Kata sandi berhasil diperbarui. Silakan masuk kembali." 
+    };
+  } catch (error: any) {
+    console.error("resetPasswordWithoutOtp error:", error);
+    return { success: false, message: "Gagal memperbarui kata sandi: " + error.message };
+  }
+}
+
