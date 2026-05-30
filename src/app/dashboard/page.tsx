@@ -169,7 +169,7 @@ export default async function CustomerDashboardPage() {
                         Booking: {b.status === "PENDING" ? "MENUNGGU" : b.status === "CONFIRMED" ? "DIKONFIRMASI" : "SEDANG FOTO"}
                       </span>
                       <span className={`px-2.5 py-1 rounded-full text-xxs font-bold uppercase tracking-wider ${getPaymentBadge(b.payment?.status)}`}>
-                        Bayar: {getPaymentBadge(b.payment?.status).includes("LUNAS") ? "LUNAS" : b.payment?.status === "DP" ? "DP 50%" : b.payment?.status === "PENDING" ? "BELUM BAYAR" : "GAGAL"}
+                        Bayar: {b.payment?.status === "LUNAS" ? "LUNAS" : b.payment?.status === "DP" ? "DP 50%" : b.payment?.status === "PENDING" ? "BELUM BAYAR" : "GAGAL"}
                       </span>
                     </div>
 

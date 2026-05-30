@@ -58,10 +58,10 @@ export async function confirmPendingCashBooking(bookingId: string) {
         data: { status: "LUNAS" }
       });
 
-      // Update booking to ON_PROGRESS
+      // Update booking to CONFIRMED
       await tx.booking.update({
         where: { id: bookingId },
-        data: { status: "ON_PROGRESS" }
+        data: { status: "CONFIRMED" }
       });
 
       // Create queue

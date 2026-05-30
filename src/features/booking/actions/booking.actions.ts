@@ -365,3 +365,102 @@ export async function generateRemainingPaymentToken(bookingId: string) {
     return { success: false, message: error.message || "Gagal membuat transaksi pelunasan" };
   }
 }
+
+export async function rescheduleBooking(bookingId: string, newDate: string, newTime: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      throw new Error("Anda harus login untuk menjadwal ulang");
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { user: true }
+    });
+
+    if (!booking) throw new Error("Booking tidak ditemukan");
+    
+    // Check ownership or admin
+    if (booking.userId !== session.user.id && session.user.role !== "ADMIN") {
+      throw new Error("Anda tidak memiliki akses ke pemesanan ini");
+    }
+
+    if (booking.status !== "CONFIRMED") {
+      throw new Error("Hanya pemesanan terkonfirmasi yang dapat dijadwal ulang");
+    }
+
+    // Check Condition: if bookingDate is in the past, it must be <= 3 days ago.
+    const now = new Date();
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sessionDate = new Date(booking.bookingDate);
+    const diffTime = todayDate.getTime() - sessionDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Days elapsed since the session date
+
+    if (diffDays > 3) {
+      throw new Error("Waktu booking sudah lewat dari 3 hari dari jadwal seharusnya, reschedule tidak diizinkan (Status Hangus)");
+    }
+
+    // Check if newDate and newTime has available slot
+    const getTimesRes = await getAvailableTimes(newDate);
+    if (!getTimesRes.success || !getTimesRes.data) {
+      throw new Error("Gagal memeriksa ketersediaan slot waktu");
+    }
+
+    if (!getTimesRes.data.includes(newTime)) {
+      throw new Error("Slot waktu terpilih sudah penuh atau tidak tersedia");
+    }
+
+    // Since we are rescheduling, find a free photographer for the new slot
+    const photographers = await prisma.user.findMany({
+      where: { role: { name: "FOTOGRAFER" } }
+    });
+
+    const busyBookings = await prisma.booking.findMany({
+      where: {
+        bookingDate: new Date(newDate),
+        bookingTime: newTime,
+        status: { notIn: ["EXPIRED", "CANCELLED"] },
+        photographerId: { not: null }
+      },
+      select: { photographerId: true }
+    });
+
+    const busyPhotographerIds = busyBookings.map(b => b.photographerId);
+    const freePhotographer = photographers.find(p => !busyPhotographerIds.includes(p.id));
+
+    if (!freePhotographer) {
+      throw new Error("Tidak ada fotografer yang tersedia untuk slot waktu ini");
+    }
+
+    // Update bookingDate, bookingTime, and photographerId
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          bookingDate: new Date(newDate),
+          bookingTime: newTime,
+          photographerId: freePhotographer.id
+        }
+      });
+
+      // If there is an existing queue, reset/delete it so that they must check-in again for the new date
+      await tx.queue.deleteMany({
+        where: { bookingId }
+      });
+    });
+
+    // Trigger Pusher
+    try {
+      await pusherServer.trigger("calendar-channel", "calendar-updated", {
+        message: "Jadwal booking berhasil di-reschedule"
+      });
+    } catch (err) {
+      console.error("Failed to trigger Pusher inside rescheduleBooking:", err);
+    }
+
+    return { success: true, message: "Berhasil menjadwal ulang sesi foto!" };
+  } catch (error: any) {
+    console.error("Reschedule Booking Error:", error.message);
+    return { success: false, message: error.message || "Gagal menjadwal ulang" };
+  }
+}

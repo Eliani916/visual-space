@@ -18,7 +18,19 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generateRemainingPaymentToken } from "@/features/booking/actions/booking.actions";
+import { 
+  generateRemainingPaymentToken,
+  getAvailableTimes,
+  rescheduleBooking
+} from "@/features/booking/actions/booking.actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface CustomerBookingDetailClientProps {
   booking: any;
@@ -27,6 +39,71 @@ interface CustomerBookingDetailClientProps {
 export default function CustomerBookingDetailClient({ booking }: CustomerBookingDetailClientProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [fetchingTimes, setFetchingTimes] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+
+  const now = new Date();
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const bookingDateObj = new Date(booking.bookingDate);
+  const diffTime = todayDate.getTime() - bookingDateObj.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Days elapsed since session date
+
+  const isRescheduleEligible = booking.status === "CONFIRMED" && diffDays <= 3;
+
+  useEffect(() => {
+    if (rescheduleDate) {
+      setFetchingTimes(true);
+      getAvailableTimes(rescheduleDate).then((res) => {
+        if (res.success) {
+          setAvailableTimes(res.data || []);
+        } else {
+          toast.error("Gagal memuat slot waktu");
+        }
+        setFetchingTimes(false);
+      });
+    } else {
+      setAvailableTimes([]);
+    }
+  }, [rescheduleDate]);
+
+  const handleConfirmReschedule = async () => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error("Silakan pilih tanggal dan jam baru");
+      return;
+    }
+    setRescheduling(true);
+    const res = await rescheduleBooking(booking.id, rescheduleDate, rescheduleTime);
+    if (res.success) {
+      toast.success("Jadwal sesi foto berhasil diubah!");
+      setIsRescheduleOpen(false);
+      router.refresh();
+    } else {
+      toast.error(res.message || "Gagal mengubah jadwal");
+    }
+    setRescheduling(false);
+  };
+
+  const localToday = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+
+  const isRescheduleTimePast = (dateStr: string, timeStr: string) => {
+    if (!dateStr || !timeStr) return false;
+    const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+    
+    if (dateStr === todayStr) {
+      const [hour, minute] = timeStr.split(":").map(Number);
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      if (hour < currentHour || (hour === currentHour && minute <= currentMinute)) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const token = booking.payment?.proofUrl;
   const isTransfer = booking.payment?.method === "TRANSFER";
@@ -417,10 +494,105 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
                   Metode pembayaran terpilih adalah **Bayar di Studio (Cash)**. Harap lakukan pembayaran tunai di kasir studio sebelum sesi foto dimulai. Pemesanan ini harus dikonfirmasi/dibayar selambat-lambatnya sebelum batas waktu H-7 (atau batas kebijakan studio), atau pemesanan Anda akan dibatalkan otomatis oleh sistem.
                 </div>
               )}
+
+              {/* Reschedule button */}
+              {isRescheduleEligible && (
+                <div className="mt-4 border-t border-slate-100 dark:border-zinc-800/40 pt-4">
+                  <Button
+                    onClick={() => {
+                      setRescheduleDate("");
+                      setRescheduleTime("");
+                      setIsRescheduleOpen(true);
+                    }}
+                    className="w-full py-5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-slate-100 font-bold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 border-0"
+                  >
+                    <Calendar className="w-4 h-4 text-purple-500" />
+                    Jadwal Ulang (Reschedule)
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Reschedule Modal Dialog */}
+      <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md bg-slate-900 border border-slate-800 text-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-400" />
+              Jadwal Ulang Sesi Foto
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-400 block">Pilih Tanggal Baru</label>
+              <Input
+                type="date"
+                min={localToday}
+                value={rescheduleDate}
+                onChange={(e) => {
+                  setRescheduleDate(e.target.value);
+                  setRescheduleTime("");
+                }}
+                className="bg-slate-950 border-slate-800 text-white rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-400 block">Pilih Jam Baru</label>
+              <select
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+                disabled={!rescheduleDate || fetchingTimes || availableTimes.length === 0}
+                className="flex h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="" className="bg-slate-950 text-slate-400">
+                  {fetchingTimes ? "Memuat jam..." : !rescheduleDate ? "-- Pilih Tanggal Dulu --" : availableTimes.length === 0 ? "-- Tidak Ada Slot Tersedia --" : "-- Pilih Jam --"}
+                </option>
+                {availableTimes.map((time) => {
+                  const isPast = isRescheduleTimePast(rescheduleDate, time);
+                  return (
+                    <option
+                      key={time}
+                      value={time}
+                      disabled={isPast}
+                      className={`bg-slate-950 ${isPast ? "text-slate-650 cursor-not-allowed line-through" : "text-slate-100"}`}
+                    >
+                      {time} {isPast ? "(Lewat)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800/60 mt-6">
+              <button
+                onClick={() => setIsRescheduleOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800 rounded-xl transition cursor-pointer border-0 bg-transparent"
+              >
+                Batal
+              </button>
+              <Button
+                onClick={handleConfirmReschedule}
+                disabled={rescheduling || !rescheduleDate || !rescheduleTime}
+                className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-750 rounded-xl shadow-md shadow-purple-600/10 transition cursor-pointer border-0 disabled:opacity-40"
+              >
+                {rescheduling ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Konfirmasi Reschedule"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

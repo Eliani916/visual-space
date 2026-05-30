@@ -33,11 +33,11 @@ export async function POST(req: Request) {
         newStatus = "PENDING";
       } else if (fraudStatus === 'accept'){
         newStatus = "DP";
-        bookingStatus = "ON_PROGRESS";
+        bookingStatus = "CONFIRMED";
       }
     } else if (transactionStatus === 'settlement'){
       newStatus = "DP"; 
-      bookingStatus = "ON_PROGRESS";
+      bookingStatus = "CONFIRMED";
     } else if (transactionStatus === 'cancel' ||
       transactionStatus === 'deny' ||
       transactionStatus === 'expire'){
@@ -56,12 +56,12 @@ export async function POST(req: Request) {
     if (payment) {
       if (isRemainingPayment && (newStatus === "DP" || newStatus === "LUNAS")) {
         newStatus = "LUNAS";
-        bookingStatus = payment.booking.status === "PENDING" ? "ON_PROGRESS" : payment.booking.status;
+        bookingStatus = payment.booking.status === "PENDING" ? "CONFIRMED" : payment.booking.status;
       } else if (newStatus === "DP") {
         if (Number(payment.amount) >= Number(payment.booking.totalPrice)) {
           newStatus = "LUNAS";
         }
-        bookingStatus = payment.booking.status === "PENDING" ? "ON_PROGRESS" : payment.booking.status;
+        bookingStatus = payment.booking.status === "PENDING" ? "CONFIRMED" : payment.booking.status;
       }
 
       await prisma.$transaction(async (tx) => {

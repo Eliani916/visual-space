@@ -37,11 +37,7 @@ export async function checkInCustomer(bookingId: string) {
       }
     });
 
-    // Update booking status
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: "ON_PROGRESS" },
-    });
+    // Keep booking status as CONFIRMED when checked-in (just in queue)
 
     // Trigger Pusher event
     await pusherServer.trigger("photographer-dashboard", "queue-updated", {
@@ -93,6 +89,13 @@ export async function updateQueueStatus(queueId: string, status: "WAITING" | "IN
       data: { status },
       include: { booking: true }
     });
+
+    if (status === "IN_PROGRESS") {
+      await prisma.booking.update({
+        where: { id: queue.bookingId },
+        data: { status: "ON_PROGRESS" }
+      });
+    }
 
     if (status === "FINISHED") {
       await prisma.booking.update({

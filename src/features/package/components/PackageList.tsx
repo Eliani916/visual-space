@@ -69,7 +69,7 @@ export default function PackageList() {
         <h2 className="text-2xl font-bold">Manajemen Paket Foto</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button onClick={handleAdd}>Tambah Paket</Button>} />
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingPkg ? "Edit Paket" : "Tambah Paket"}</DialogTitle>
             </DialogHeader>

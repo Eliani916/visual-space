@@ -49,18 +49,29 @@ export async function GET() {
       }
     });
 
+    // 3. Find all CONFIRMED bookings where bookingDate is more than 3 days ago
+    const threeDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3);
+    const expiredLateBookings = await prisma.booking.findMany({
+      where: {
+        status: "CONFIRMED",
+        bookingDate: {
+          lt: threeDaysAgo,
+        },
+      },
+    });
+
     const allExpired = [...expiredTransferBookings, ...expiredCashBookings];
+    const lateExpiredIds = expiredLateBookings.map((b) => b.id);
+    const allExpiredIds = [...allExpired.map(b => b.id), ...lateExpiredIds];
 
-    if (allExpired.length > 0) {
-      const expiredIds = allExpired.map((b) => b.id);
-
+    if (allExpiredIds.length > 0) {
       await prisma.$transaction([
         prisma.booking.updateMany({
-          where: { id: { in: expiredIds } },
+          where: { id: { in: allExpiredIds } },
           data: { status: "EXPIRED" },
         }),
         prisma.payment.updateMany({
-          where: { bookingId: { in: expiredIds } },
+          where: { bookingId: { in: allExpired.map((b) => b.id) } },
           data: { status: "GAGAL" },
         }),
       ]);
@@ -75,7 +86,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ success: true, message: `Expired ${allExpired.length} bookings.` });
+    return NextResponse.json({ success: true, message: `Expired ${allExpired.length} pending bookings and ${expiredLateBookings.length} late bookings.` });
   } catch (error: any) {
     console.error("Cron Expire Booking Error:", error.message);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

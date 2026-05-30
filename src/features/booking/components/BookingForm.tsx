@@ -243,12 +243,27 @@ export default function BookingForm({ settings }: { settings: any }) {
 
   const localToday = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split("T")[0];
 
+  const isTimePast = (dateStr: string, timeStr: string) => {
+    if (!dateStr || !timeStr) return false;
+    const now = new Date();
+    const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+    
+    if (dateStr === todayStr) {
+      const [hour, minute] = timeStr.split(":").map(Number);
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      if (hour < currentHour || (hour === currentHour && minute <= currentMinute)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   return (
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="w-full relative z-10">
-          {/* Hidden packageId field */}
-          <input type="hidden" {...form.register("packageId")} />
+
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
             {/* Left Column: Details & Reviews */}
@@ -366,6 +381,29 @@ export default function BookingForm({ settings }: { settings: any }) {
                 </h3>
 
                 <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="packageId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-slate-400 block mb-1">Paket Foto</FormLabel>
+                        <FormControl>
+                          <select 
+                            {...field} 
+                            className="flex h-10 w-full rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:border-purple-500"
+                          >
+                            {packages.map(pkg => (
+                              <option key={pkg.id} value={pkg.id} className="bg-slate-950 text-slate-100">
+                                {pkg.name} - Rp {parseFloat(pkg.price).toLocaleString("id-ID")}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -399,9 +437,19 @@ export default function BookingForm({ settings }: { settings: any }) {
                               className="flex h-10 w-full rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <option value="" className="bg-slate-950 text-slate-400">-- Pilih Jam --</option>
-                              {availableTimes.map(time => (
-                                <option key={time} value={time} className="bg-slate-950 text-slate-100">{time}</option>
-                              ))}
+                              {availableTimes.map(time => {
+                                const isPast = isTimePast(selectedDate, time);
+                                return (
+                                  <option 
+                                    key={time} 
+                                    value={time} 
+                                    disabled={isPast} 
+                                    className={`bg-slate-950 ${isPast ? 'text-slate-650 cursor-not-allowed line-through' : 'text-slate-100'}`}
+                                  >
+                                    {time} {isPast ? '(Lewat)' : ''}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </FormControl>
                           <FormMessage />
