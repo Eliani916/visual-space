@@ -81,16 +81,63 @@ export default async function Home() {
   }));
 
   return (
-    <HomeClient
-      features={features}
-      steps={steps}
-      faqs={faqs}
-      packages={packages.map(p => ({
-        ...p,
-        price: p.price.toString() // Convert Decimal to string/number for client component serialization
-      }))}
-      testimonials={testimonials}
-      session={session}
-    />
+    <>
+      {/* Schema.org JSON-LD Structured Data for LocalBusiness */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            "name": "Visual Space Studio",
+            "image": "https://visual-space-nine.vercel.app/image/paket/studio.png",
+            "@id": "https://visual-space-nine.vercel.app/#website",
+            "url": "https://visual-space-nine.vercel.app",
+            "telephone": "+628123456789",
+            "priceRange": "Rp150000 - Rp450000",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Jl. Studio Photobooth Premium No. 12",
+              "addressLocality": "Jakarta Selatan",
+              "postalCode": "12345",
+              "addressCountry": "ID"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": -6.2088,
+              "longitude": 106.8456
+            },
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ],
+              "opens": "09:00",
+              "closes": "21:00"
+            },
+            "sameAs": [
+              "https://www.instagram.com/visualspace"
+            ]
+          })
+        }}
+      />
+      <HomeClient
+        features={features}
+        steps={steps}
+        faqs={faqs}
+        packages={packages.map(p => ({
+          ...p,
+          price: p.price.toString() // Convert Decimal to string/number for client component serialization
+        }))}
+        testimonials={testimonials}
+        session={session}
+      />
+    </>
   );
 }

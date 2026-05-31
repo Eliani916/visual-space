@@ -29,6 +29,7 @@ export async function getPhotographers() {
         email: true,
         phoneNumber: true,
         createdAt: true,
+        photographerProfile: true,
         images: {
           take: 1,
           select: { url: true }

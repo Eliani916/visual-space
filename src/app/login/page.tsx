@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Camera, Eye, EyeOff, KeyRound, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLoadingStore } from "@/store/useLoadingStore";
 import { 
   checkEmailExists, 
   resetPasswordWithoutOtp 
@@ -48,7 +49,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
-  const [loading, setLoading] = useState(false);
+  const { showLoading, hideLoading, isLoading } = useLoadingStore();
   
   // Auth mode state: login, forgot, reset
   const [mode, setMode] = useState<"login" | "forgot" | "reset">("login");
@@ -60,7 +61,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    showLoading("Memeriksa kredensial...");
 
     const res = await signIn("credentials", {
       redirect: false,
@@ -70,6 +71,7 @@ function LoginForm() {
 
     if (res?.error) {
       toast.error(res.error);
+      hideLoading();
     } else {
       toast.success("Login berhasil!");
       
@@ -97,8 +99,9 @@ function LoginForm() {
 
       router.push(redirectUrl);
       router.refresh();
+      // Wait for navigation before hiding loader
+      setTimeout(() => hideLoading(), 1000);
     }
-    setLoading(false);
   };
 
   const handleSendResetLink = async (e: React.FormEvent) => {
@@ -107,7 +110,7 @@ function LoginForm() {
       toast.error("Silakan masukkan email Anda");
       return;
     }
-    setLoading(true);
+    showLoading("Memeriksa email...");
     
     const res = await checkEmailExists(forgotEmail);
     if (res.success) {
@@ -116,7 +119,7 @@ function LoginForm() {
     } else {
       toast.error(res.message);
     }
-    setLoading(false);
+    hideLoading();
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -133,7 +136,7 @@ function LoginForm() {
       toast.error("Kata sandi minimal 6 karakter");
       return;
     }
-    setLoading(true);
+    showLoading("Menyimpan kata sandi...");
     
     const res = await resetPasswordWithoutOtp(forgotEmail, {
       password: resetForm.password,
@@ -149,7 +152,7 @@ function LoginForm() {
     } else {
       toast.error(res.message);
     }
-    setLoading(false);
+    hideLoading();
   };
 
   return (
@@ -212,9 +215,9 @@ function LoginForm() {
                 <Button 
                   type="submit" 
                   className="w-full py-5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98] transition-all font-bold text-sm text-white border-0 mt-6 cursor-pointer" 
-                  disabled={loading}
+                  disabled={isLoading}
                 >
-                  {loading ? "Memproses..." : "Masuk"}
+                  Masuk
                 </Button>
               </form>
 
@@ -251,9 +254,9 @@ function LoginForm() {
                 <Button 
                   type="submit" 
                   className="w-full py-5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98] transition-all font-bold text-sm text-white border-0 mt-6 cursor-pointer" 
-                  disabled={loading}
+                  disabled={isLoading}
                 >
-                  {loading ? "Memproses..." : "Lanjutkan"}
+                  Lanjutkan
                 </Button>
               </form>
 
@@ -305,9 +308,9 @@ function LoginForm() {
                 <Button 
                   type="submit" 
                   className="w-full py-5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98] transition-all font-bold text-sm text-white border-0 mt-6 cursor-pointer" 
-                  disabled={loading}
+                  disabled={isLoading}
                 >
-                  {loading ? "Menyimpan..." : "Simpan Kata Sandi"}
+                  Simpan Kata Sandi
                 </Button>
               </form>
 

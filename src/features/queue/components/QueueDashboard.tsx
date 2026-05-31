@@ -5,6 +5,7 @@ import { getActiveQueue, updateQueueStatus } from "../actions/queue.actions";
 import { getPusherClient } from "@/lib/pusher";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useLoadingStore } from "@/store/useLoadingStore";
 import {
   Table,
   TableBody,
@@ -17,13 +18,17 @@ import {
 export default function QueueDashboard() {
   const [queues, setQueues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const { showLoading, hideLoading, isLoading } = useLoadingStore();
 
-  const fetchQueues = async () => {
+  const fetchQueues = async (isManual = false) => {
+    if (isManual) showLoading("Memperbarui Data...");
     const res = await getActiveQueue();
     if (res.success) {
       setQueues(res.data || []);
     }
     setLoading(false);
+    if (isManual) hideLoading();
   };
 
   useEffect(() => {
@@ -44,25 +49,29 @@ export default function QueueDashboard() {
   }, []);
 
   const handleStatusChange = async (queueId: string, status: "WAITING" | "IN_PROGRESS" | "FINISHED") => {
+    showLoading("Mengubah Status...");
     const res = await updateQueueStatus(queueId, status);
     if (res.success) {
       toast.success(`Status berhasil diubah menjadi ${status}`);
     } else {
       toast.error(res.message);
     }
+    hideLoading();
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-end">
-        <Button variant="default" onClick={fetchQueues}>Refresh Data</Button>
+        <Button variant="default" onClick={() => fetchQueues(true)} disabled={isLoading}>
+          Refresh Data
+        </Button>
       </div>
       
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200 dark:border-zinc-800/80 shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Waktu Check-In</TableHead>
+              <TableHead>Jadwal Booking</TableHead>
               <TableHead>Pelanggan</TableHead>
               <TableHead>Paket</TableHead>
               <TableHead>Status</TableHead>
@@ -76,12 +85,15 @@ export default function QueueDashboard() {
               </TableRow>
             ) : queues.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-500">Tidak ada antrean saat ini.</TableCell>
+                <TableCell colSpan={5} className="text-center text-gray-500">Tidak ada antrean hari ini.</TableCell>
               </TableRow>
             ) : (
               queues.map((q) => (
                 <TableRow key={q.id}>
-                  <TableCell>{new Date(q.checkInTime).toLocaleTimeString('id-ID')}</TableCell>
+                  <TableCell>
+                    {new Date(q.booking.bookingDate).toLocaleDateString('id-ID', { weekday: 'long' })},{' '}
+                    {q.booking.bookingTime} WIB
+                  </TableCell>
                   <TableCell className="font-medium">{q.booking.user.name}</TableCell>
                   <TableCell>{q.booking.package.name}</TableCell>
                   <TableCell>
@@ -94,10 +106,10 @@ export default function QueueDashboard() {
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     {q.status === 'WAITING' && (
-                      <Button size="sm" onClick={() => handleStatusChange(q.id, "IN_PROGRESS")}>Mulai Sesi</Button>
+                      <Button size="sm" onClick={() => handleStatusChange(q.id, "IN_PROGRESS")} disabled={isLoading}>Mulai Sesi</Button>
                     )}
                     {q.status === 'IN_PROGRESS' && (
-                      <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleStatusChange(q.id, "FINISHED")}>Selesai Foto</Button>
+                      <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleStatusChange(q.id, "FINISHED")} disabled={isLoading}>Selesai Foto</Button>
                     )}
                   </TableCell>
                 </TableRow>

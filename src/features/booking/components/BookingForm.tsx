@@ -283,12 +283,18 @@ export default function BookingForm({ settings }: { settings: any }) {
                   {/* Title & Price */}
                   <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2 border-b border-slate-800/80 pb-4">
                     <h2 className="text-2xl font-black text-white">{selectedPackage.name}</h2>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-bold text-slate-400">Rp</span>
-                      <span className="text-3xl font-black text-purple-400">
-                        {packagePrice.toLocaleString("id-ID")}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium ml-1">/sesi</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm font-bold text-slate-400">Rp</span>
+                        <span className="text-3xl font-black text-purple-400">
+                          {packagePrice.toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium ml-1">/sesi</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+                        <Clock className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Durasi: {selectedPackage.duration || 60} Menit</span>
+                      </div>
                     </div>
                   </div>
 

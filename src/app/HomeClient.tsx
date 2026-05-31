@@ -42,51 +42,7 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
 
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-slate-50 flex flex-col relative overflow-hidden">
-      {/* Schema.org JSON-LD Structured Data for LocalBusiness */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": "Visual Space Studio",
-            "image": "https://visual-space-nine.vercel.app/image/paket/studio.png",
-            "@id": "https://visual-space-nine.vercel.app/#website",
-            "url": "https://visual-space-nine.vercel.app",
-            "telephone": "+628123456789",
-            "priceRange": "Rp150000 - Rp450000",
-            "address": {
-              "@type": "PostalAddress",
-              "streetAddress": "Jl. Studio Photobooth Premium No. 12",
-              "addressLocality": "Jakarta Selatan",
-              "postalCode": "12345",
-              "addressCountry": "ID"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": -6.2088,
-              "longitude": 106.8456
-            },
-            "openingHoursSpecification": {
-              "@type": "OpeningHoursSpecification",
-              "dayOfWeek": [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday"
-              ],
-              "opens": "09:00",
-              "closes": "21:00"
-            },
-            "sameAs": [
-              "https://www.instagram.com/visualspace"
-            ]
-          })
-        }}
-      />
+
 
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -161,12 +117,12 @@ export default function HomeClient({ features, steps, faqs, packages, testimonia
 
                     {session.user.role === "ADMIN" && (
                       <Link
-                        href="/admin"
+                        href="/admin/dashboard"
                         className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        <Icons.Shield className="w-4 h-4 text-blue-400" />
-                        Admin Panel
+                        <Icons.LayoutDashboard className="w-4 h-4 text-blue-400" />
+                        Dashboard Admin
                       </Link>
                     )}
 

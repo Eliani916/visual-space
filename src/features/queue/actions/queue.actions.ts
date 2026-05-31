@@ -58,9 +58,20 @@ export async function checkInCustomer(bookingId: string) {
 
 export async function getActiveQueue() {
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const queues = await prisma.queue.findMany({
       where: {
         status: { in: ["WAITING", "IN_PROGRESS"] },
+        booking: {
+          bookingDate: {
+            gte: today,
+            lt: tomorrow,
+          }
+        }
       },
       include: {
         booking: {

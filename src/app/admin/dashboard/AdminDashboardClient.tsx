@@ -276,7 +276,7 @@ export default function AdminDashboardClient({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 dark:bg-zinc-950/40 text-slate-500 dark:text-zinc-500 font-bold border-b border-slate-200 dark:border-zinc-800/80">
+                <tr className="bg-slate-100 dark:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 font-bold border-b border-slate-200 dark:border-zinc-700">
                   <th className="px-5 py-3">Pelanggan</th>
                   <th className="px-5 py-3">Paket</th>
                   <th className="px-5 py-3">Jadwal Foto</th>

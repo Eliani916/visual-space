@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { createPackage, updatePackage } from "../actions/package.actions";
-import { useState } from "react";
+import { getPackages, createPackage, updatePackage } from "../actions/package.actions";
+import { getStudios } from "../actions/studio.actions";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Upload, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 
@@ -33,8 +34,22 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
       ctaText: initialData?.ctaText || "Pilih Paket",
       isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
       imageUrls: initialData?.images?.map((img: any) => img.url) || [],
+      duration: initialData?.duration || 60,
+      studioId: initialData?.studioId || null,
     },
   });
+
+  const [studios, setStudios] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadStudios() {
+      const res = await getStudios();
+      if (res.success) {
+        setStudios(res.data);
+      }
+    }
+    loadStudios();
+  }, []);
 
   const onSubmit = async (data: PackageInput) => {
     setLoading(true);
@@ -188,6 +203,45 @@ export default function PackageForm({ initialData, onSuccess }: Props) {
                 <FormLabel>Jumlah Cetak</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="duration"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Durasi Sesi (Menit)</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="60" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 60)} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="studioId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pilih Studio (Opsional)</FormLabel>
+                <FormControl>
+                  <select
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-400"
+                    {...field}
+                    value={field.value || ""}
+                    onChange={e => field.onChange(e.target.value === "" ? null : e.target.value)}
+                  >
+                    <option value="">-- Tanpa Studio Khusus --</option>
+                    {studios.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </FormControl>
                 <FormMessage />
               </FormItem>

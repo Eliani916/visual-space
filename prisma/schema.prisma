@@ -22,6 +22,13 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PhotographerStatus {
+  AVAILABLE
+  ON_DUTY
+  LEAVE
+  INACTIVE
+}
+
 enum PaymentMethod {
   TRANSFER
   CASH
@@ -66,6 +73,7 @@ model User {
   photographerBookings Booking[] @relation("PhotographerBookings")
   activityLogs  ActivityLog[]
   images        Image[]
+  photographerProfile PhotographerProfile?
 
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -81,12 +89,15 @@ model Package {
   name          String
   price         Decimal   @db.Decimal(10, 2)
   printCount    Int       @map("print_count")
+  duration      Int       @default(60) // Durasi dalam menit
   description   String    @db.Text
   features      String?   @db.Text
   isPopular     Boolean   @default(false) @map("is_popular")
   ctaText       String?   @default("Pilih Paket") @map("cta_text")
   isActive      Boolean   @default(true) @map("is_active")
+  studioId      String?   @map("studio_id")
   
+  studio        Studio?   @relation(fields: [studioId], references: [id])
   bookings      Booking[]
   images        Image[]
 
@@ -103,6 +114,7 @@ model Booking {
   packageId     String    @map("package_id")
   bookingDate   DateTime  @db.Date @map("booking_date")
   bookingTime   String    @map("booking_time")
+  endTime       String?   @map("end_time") // Dihitung dari bookingTime + duration
   status        BookingStatus @default(PENDING)
   totalPrice    Decimal   @db.Decimal(10, 2) @map("total_price")
   photographerId String?   @map("photographer_id")
@@ -305,4 +317,40 @@ model PasswordResetOtp {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("password_reset_otps")
+}
+
+model Studio {
+  id          String    @id @default(uuid())
+  name        String
+  description String?   @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  
+  packages    Package[]
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@map("studios")
+}
+
+model PhotographerProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  gender          String?
+  address         String?   @db.Text
+  joinedDate      DateTime  @default(now()) @map("joined_date")
+  specialization  String?   @db.Text
+  experienceYears Int?      @default(0) @map("experience_years")
+  certification   String?   @db.Text
+  portfolioUrl    String?   @map("portfolio_url")
+  description     String?   @db.Text
+  status          PhotographerStatus @default(AVAILABLE)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("photographer_profiles")
 }

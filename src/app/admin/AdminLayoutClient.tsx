@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Home,
+  BarChart,
 } from "lucide-react";
 
 interface AdminLayoutClientProps {
@@ -91,6 +92,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       name: "Konten Landing Page",
       href: "/admin/landing-page",
       icon: Sparkles,
+    },
+    {
+      name: "Laporan Keuangan",
+      href: "/admin/reports",
+      icon: BarChart,
     },
     {
       name: "Pengaturan Sistem",

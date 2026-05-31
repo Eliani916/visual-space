@@ -10,6 +10,8 @@ export const packageSchema = z.object({
   ctaText: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
   imageUrls: z.array(z.string()).optional(),
+  duration: z.number().int().min(15, "Durasi minimal 15 menit").default(60),
+  studioId: z.string().optional().nullable(),
 });
 
 export type PackageInput = z.infer<typeof packageSchema>;

@@ -9,3 +9,16 @@ export const photographerSchema = z.object({
 });
 
 export type PhotographerInput = z.infer<typeof photographerSchema>;
+
+export const photographerProfileSchema = z.object({
+  gender: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  specialization: z.string().optional().nullable(),
+  experienceYears: z.number().int().min(0).default(0),
+  certification: z.string().optional().nullable(),
+  portfolioUrl: z.string().url("Format URL tidak valid").optional().nullable().or(z.literal("")),
+  description: z.string().optional().nullable(),
+  status: z.enum(["AVAILABLE", "ON_DUTY", "LEAVE", "INACTIVE"]).default("AVAILABLE")
+});
+
+export type PhotographerProfileInput = z.infer<typeof photographerProfileSchema>;

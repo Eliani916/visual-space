@@ -20,13 +20,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import PhotographerForm from "./PhotographerForm";
-import { Plus, Edit2, Trash2, RefreshCw } from "lucide-react";
+import PhotographerProfileForm from "@/features/photographer/components/PhotographerProfileForm";
+import { Plus, Edit2, Trash2, RefreshCw, UserCircle } from "lucide-react";
 
 export default function PhotographerList() {
   const [photographers, setPhotographers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<any>(null);
+  const [editingProfileUserId, setEditingProfileUserId] = useState<string | null>(null);
+  const [editingProfileData, setEditingProfileData] = useState<any>(null);
 
   const fetchPhotographers = async () => {
     setLoading(true);
@@ -58,6 +62,12 @@ export default function PhotographerList() {
   const handleEdit = (photo: any) => {
     setEditingPhoto(photo);
     setOpen(true);
+  };
+
+  const handleEditProfile = (photo: any) => {
+    setEditingProfileUserId(photo.id);
+    setEditingProfileData(photo.photographerProfile || null);
+    setProfileOpen(true);
   };
 
   const handleAdd = () => {
@@ -98,6 +108,25 @@ export default function PhotographerList() {
               />
             </DialogContent>
           </Dialog>
+
+          {/* Dialog for Profile Edit */}
+          <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+            <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Profil Lanjutan Fotografer</DialogTitle>
+              </DialogHeader>
+              {editingProfileUserId && (
+                <PhotographerProfileForm
+                  userId={editingProfileUserId}
+                  initialData={editingProfileData}
+                  onSuccess={() => {
+                    setProfileOpen(false);
+                    fetchPhotographers();
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -109,6 +138,7 @@ export default function PhotographerList() {
               <TableHead className="font-semibold text-slate-700 dark:text-zinc-300">Nama Fotografer</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-zinc-300">Email</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-zinc-300">Nomor Telepon</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-zinc-300 text-center">Status</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-zinc-300 text-right pr-6">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -140,7 +170,30 @@ export default function PhotographerList() {
                   <TableCell className="text-slate-600 dark:text-zinc-400">
                     {photo.phoneNumber || "-"}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {photo.photographerProfile?.status === "AVAILABLE" ? (
+                      <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide">AVAILABLE</span>
+                    ) : photo.photographerProfile?.status === "ON_DUTY" ? (
+                      <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide">ON DUTY</span>
+                    ) : photo.photographerProfile?.status === "LEAVE" ? (
+                      <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide">LEAVE</span>
+                    ) : photo.photographerProfile?.status === "INACTIVE" ? (
+                      <span className="bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-400 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide">INACTIVE</span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic">Belum diatur</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right space-x-1.5 pr-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditProfile(photo)}
+                      className="h-8 px-2 flex items-center gap-1.5 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                      title="Edit Profil"
+                    >
+                      <UserCircle className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">Profil</span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

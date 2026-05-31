@@ -9,6 +9,18 @@ import { createTransaction } from "@/services/midtrans.service";
 import { getSettings } from "./settings.actions";
 import { pusherServer } from "@/lib/pusher";
 
+function addMinutesToTime(time: string, mins: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const date = new Date();
+  date.setHours(h, m, 0, 0);
+  date.setMinutes(date.getMinutes() + mins);
+  return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+}
+
+function checkTimeOverlap(start1: string, end1: string, start2: string, end2: string): boolean {
+  return (start1 < end2) && (start2 < end1);
+}
+
 export async function createBooking(data: BookingInput) {
   try {
     const session = await getServerSession(authOptions);
@@ -40,28 +52,54 @@ export async function createBooking(data: BookingInput) {
       throw new Error("Tanggal booking tidak valid (harus di masa depan)");
     }
 
-    // Get all users with role FOTOGRAFER
-    const photographers = await prisma.user.findMany({
-      where: {
-        role: {
-          name: "FOTOGRAFER"
-        }
-      }
-    });
-
-    if (photographers.length === 0) {
-      throw new Error("Tidak ada fotografer terdaftar di sistem.");
-    }
-
     // Run the booking check, insert, and Midtrans transaction creation in a single database transaction.
     // If Midtrans API call fails, the database inserts are rolled back.
     // Serializable isolation level ensures that concurrent bookings for the same slot serialize, preventing race conditions.
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Get bookings on this slot to find busy photographers
-      const busyBookings = await tx.booking.findMany({
+      // Check payment method constraints
+      if (diffDays >= settings.dpMinDaysAhead && validatedData.paymentMethod === "CASH") {
+        throw new Error(`Booking H-${settings.dpMinDaysAhead} atau lebih wajib menggunakan transfer (DP)`);
+      }
+
+      // Get package price and duration
+      const pkg = await tx.package.findUnique({ where: { id: validatedData.packageId } });
+      if (!pkg) throw new Error("Paket tidak ditemukan");
+
+      const packagePrice = Number(pkg.price);
+      const duration = pkg.duration || 60;
+      const endTime = addMinutesToTime(validatedData.bookingTime, duration);
+
+      // Check Studio overlap
+      if (pkg.studioId) {
+        const studioBookings = await tx.booking.findMany({
+          where: {
+            bookingDate: new Date(validatedData.bookingDate),
+            status: { notIn: ["EXPIRED", "CANCELLED"] },
+            package: { studioId: pkg.studioId }
+          },
+          include: { package: true }
+        });
+        
+        const isStudioBusy = studioBookings.some(b => checkTimeOverlap(validatedData.bookingTime, endTime, b.bookingTime, b.endTime || addMinutesToTime(b.bookingTime, b.package.duration || 60)));
+        if (isStudioBusy) {
+          throw new Error("Studio yang dipilih sudah digunakan pada jadwal tersebut.");
+        }
+      }
+
+      // 1. Get active photographers
+      const activePhotographers = await tx.photographerProfile.findMany({
+        where: { status: "AVAILABLE" },
+        include: { user: true }
+      });
+
+      if (activePhotographers.length === 0) {
+        throw new Error("Tidak ada fotografer yang tersedia pada jam yang dipilih.");
+      }
+
+      // 2. Get bookings on this date to find busy photographers
+      const dailyBookings = await tx.booking.findMany({
         where: {
           bookingDate: new Date(validatedData.bookingDate),
-          bookingTime: validatedData.bookingTime,
           status: {
             notIn: ["EXPIRED", "CANCELLED"]
           },
@@ -69,30 +107,19 @@ export async function createBooking(data: BookingInput) {
             not: null
           }
         },
-        select: {
-          photographerId: true
-        }
+        include: { package: true }
       });
 
-      const busyPhotographerIds = busyBookings.map(b => b.photographerId);
+      // Filter busy bookings that overlap with requested time
+      const overlappingBookings = dailyBookings.filter(b => checkTimeOverlap(validatedData.bookingTime, endTime, b.bookingTime, b.endTime || addMinutesToTime(b.bookingTime, b.package.duration || 60)));
+      const busyPhotographerIds = overlappingBookings.map(b => b.photographerId);
 
       // Find a photographer who is free
-      const freePhotographer = photographers.find(p => !busyPhotographerIds.includes(p.id));
+      const freePhotographer = activePhotographers.find(p => !busyPhotographerIds.includes(p.user.id));
 
       if (!freePhotographer) {
-        throw new Error("Jadwal ini sudah penuh untuk semua fotografer. Silakan pilih waktu lain.");
+        throw new Error("Slot penuh (semua fotografer telah digunakan).");
       }
-
-      // Check payment method constraints
-      if (diffDays >= settings.dpMinDaysAhead && validatedData.paymentMethod === "CASH") {
-        throw new Error(`Booking H-${settings.dpMinDaysAhead} atau lebih wajib menggunakan transfer (DP)`);
-      }
-
-      // Get package price
-      const pkg = await tx.package.findUnique({ where: { id: validatedData.packageId } });
-      if (!pkg) throw new Error("Paket tidak ditemukan");
-
-      const packagePrice = Number(pkg.price);
 
       // Validate promo code from database (Promo feature removed)
       let discountAmount = 0;
@@ -107,9 +134,10 @@ export async function createBooking(data: BookingInput) {
         data: {
           userId: session.user.id,
           packageId: pkg.id,
-          photographerId: freePhotographer.id,
+          photographerId: freePhotographer.user.id,
           bookingDate: new Date(validatedData.bookingDate),
           bookingTime: validatedData.bookingTime,
+          endTime: endTime,
           totalPrice: finalTotalPrice,
           promoCode: validatedData.promoCode || null,
           discountAmount: discountAmount > 0 ? discountAmount : null,
@@ -205,9 +233,9 @@ export async function getAvailableTimes(dateStr: string) {
       allSlots.push(`${h.toString().padStart(2, "0")}:00`);
     }
 
-    // Get all photographers count
-    const photographerCount = await prisma.user.count({
-      where: { role: { name: "FOTOGRAFER" } }
+    // Get active photographers count
+    const photographerCount = await prisma.photographerProfile.count({
+      where: { status: "AVAILABLE" }
     });
 
     // Get bookings count per time slot for this date
@@ -217,20 +245,14 @@ export async function getAvailableTimes(dateStr: string) {
         status: { notIn: ["EXPIRED", "CANCELLED"] },
         photographerId: { not: null }
       },
-      select: { bookingTime: true },
-    });
-
-    // Count bookings per slot
-    const slotCounts: Record<string, number> = {};
-    bookings.forEach(b => {
-      const time = b.bookingTime.substring(0, 5);
-      slotCounts[time] = (slotCounts[time] || 0) + 1;
+      include: { package: true }
     });
 
     // A slot is available if its active booking count is less than the total photographer count
     const availableSlots = allSlots.filter(slot => {
-      const count = slotCounts[slot] || 0;
-      return count < photographerCount;
+      const slotEnd = addMinutesToTime(slot, 60);
+      const overlaps = bookings.filter(b => checkTimeOverlap(slot, slotEnd, b.bookingTime, b.endTime || addMinutesToTime(b.bookingTime, b.package.duration || 60)));
+      return overlaps.length < photographerCount;
     });
     return { success: true, data: availableSlots };
   } catch (error) {
@@ -249,9 +271,9 @@ export async function getCalendarBookingsStatus(year: number, month: number) {
     const startHour = parseInt(settings.openingHour.split(":")[0]);
     const endHour = parseInt(settings.closingHour.split(":")[0]);
     
-    // Total photographers count
-    const photographerCount = await prisma.user.count({
-      where: { role: { name: "FOTOGRAFER" } }
+    // Total active photographers count
+    const photographerCount = await prisma.photographerProfile.count({
+      where: { status: "AVAILABLE" }
     });
 
     // Date range for the requested month
@@ -411,35 +433,42 @@ export async function rescheduleBooking(bookingId: string, newDate: string, newT
     }
 
     // Since we are rescheduling, find a free photographer for the new slot
-    const photographers = await prisma.user.findMany({
-      where: { role: { name: "FOTOGRAFER" } }
+    const activePhotographers = await prisma.photographerProfile.findMany({
+      where: { status: "AVAILABLE" },
+      include: { user: true }
     });
 
-    const busyBookings = await prisma.booking.findMany({
+    const duration = booking.package?.duration || 60;
+    const endTime = addMinutesToTime(newTime, duration);
+
+    const dailyBookings = await prisma.booking.findMany({
       where: {
         bookingDate: new Date(newDate),
-        bookingTime: newTime,
         status: { notIn: ["EXPIRED", "CANCELLED"] },
-        photographerId: { not: null }
+        photographerId: { not: null },
+        id: { not: bookingId }
       },
-      select: { photographerId: true }
+      include: { package: true }
     });
 
-    const busyPhotographerIds = busyBookings.map(b => b.photographerId);
-    const freePhotographer = photographers.find(p => !busyPhotographerIds.includes(p.id));
+    const overlappingBookings = dailyBookings.filter(b => checkTimeOverlap(newTime, endTime, b.bookingTime, b.endTime || addMinutesToTime(b.bookingTime, b.package.duration || 60)));
+    const busyPhotographerIds = overlappingBookings.map(b => b.photographerId);
+    
+    const freePhotographer = activePhotographers.find(p => !busyPhotographerIds.includes(p.user.id));
 
     if (!freePhotographer) {
       throw new Error("Tidak ada fotografer yang tersedia untuk slot waktu ini");
     }
 
-    // Update bookingDate, bookingTime, and photographerId
+    // Update bookingDate, bookingTime, endTime and photographerId
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id: bookingId },
         data: {
           bookingDate: new Date(newDate),
           bookingTime: newTime,
-          photographerId: freePhotographer.id
+          endTime: endTime,
+          photographerId: freePhotographer.user.id
         }
       });
 
@@ -462,5 +491,58 @@ export async function rescheduleBooking(bookingId: string, newDate: string, newT
   } catch (error: any) {
     console.error("Reschedule Booking Error:", error.message);
     return { success: false, message: error.message || "Gagal menjadwal ulang" };
+  }
+}
+
+export async function cancelBooking(bookingId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      throw new Error("Anda harus login untuk membatalkan pesanan");
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { user: true }
+    });
+
+    if (!booking) throw new Error("Booking tidak ditemukan");
+    
+    // Check ownership or admin
+    if (booking.userId !== session.user.id && session.user.role !== "ADMIN") {
+      throw new Error("Anda tidak memiliki akses ke pemesanan ini");
+    }
+
+    if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
+      throw new Error("Hanya pemesanan dengan status PENDING atau CONFIRMED yang dapat dibatalkan");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: "CANCELLED",
+          photographerId: null // release the photographer slot
+        }
+      });
+
+      await tx.queue.deleteMany({
+        where: { bookingId }
+      });
+    });
+
+    // Trigger Pusher
+    try {
+      await pusherServer.trigger("calendar-channel", "calendar-updated", {
+        message: "Sebuah jadwal booking telah dibatalkan"
+      });
+    } catch (err) {
+      console.error("Failed to trigger Pusher inside cancelBooking:", err);
+    }
+
+    return { success: true, message: "Pemesanan berhasil dibatalkan." };
+  } catch (error: any) {
+    console.error("Cancel Booking Error:", error.message);
+    return { success: false, message: error.message || "Gagal membatalkan pemesanan" };
   }
 }

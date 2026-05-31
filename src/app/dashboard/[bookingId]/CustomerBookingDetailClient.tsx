@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { 
   generateRemainingPaymentToken,
   getAvailableTimes,
-  rescheduleBooking
+  rescheduleBooking,
+  cancelBooking
 } from "@/features/booking/actions/booking.actions";
 import {
   Dialog,
@@ -46,6 +47,9 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [fetchingTimes, setFetchingTimes] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const now = new Date();
   const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -86,6 +90,19 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
       toast.error(res.message || "Gagal mengubah jadwal");
     }
     setRescheduling(false);
+  };
+
+  const handleConfirmCancel = async () => {
+    setCancelling(true);
+    const res = await cancelBooking(booking.id);
+    if (res.success) {
+      toast.success("Pesanan berhasil dibatalkan!");
+      setIsCancelOpen(false);
+      router.refresh();
+    } else {
+      toast.error(res.message || "Gagal membatalkan pesanan");
+    }
+    setCancelling(false);
   };
 
   const localToday = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split("T")[0];
@@ -511,6 +528,19 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
                   </Button>
                 </div>
               )}
+
+              {/* Cancel button */}
+              {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
+                <div className="mt-3">
+                  <Button
+                    onClick={() => setIsCancelOpen(true)}
+                    variant="outline"
+                    className="w-full py-5 rounded-xl border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    Batalkan Pesanan
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -587,6 +617,51 @@ export default function CustomerBookingDetailClient({ booking }: CustomerBooking
                   </>
                 ) : (
                   "Konfirmasi Reschedule"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Modal Dialog */}
+      <Dialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-900 dark:text-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-rose-600 dark:text-rose-500">
+              <AlertCircle className="w-5 h-5" />
+              Batalkan Pesanan
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+              Apakah Anda yakin ingin membatalkan pesanan foto ini?
+            </p>
+            
+            <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 p-4 rounded-2xl text-xs text-rose-700 dark:text-rose-400 leading-relaxed font-medium">
+              <strong>Penting:</strong> Jika Anda sudah melakukan pembayaran (DP maupun Lunas), dana yang masuk tidak dapat dikembalikan secara otomatis sesuai dengan kebijakan studio. Jadwal ini akan dilepas dan dapat dipesan oleh orang lain.
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 mt-2">
+              <button
+                onClick={() => setIsCancelOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer border-0 bg-transparent"
+              >
+                Kembali
+              </button>
+              <Button
+                onClick={handleConfirmCancel}
+                disabled={cancelling}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/10 transition cursor-pointer border-0 disabled:opacity-40"
+              >
+                {cancelling ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    Memproses...
+                  </>
+                ) : (
+                  "Ya, Batalkan Pesanan"
                 )}
               </Button>
             </div>
